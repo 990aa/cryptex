@@ -45,6 +45,18 @@ class MCMCConfig:
     callback_interval: int = 500
     """How often (in iterations) to call the progress callback."""
 
+    early_stop_patience: int = 15_000
+    """Stop a chain if no improvement after this many iterations."""
+
+    score_threshold: float | None = None
+    """If set, stop all chains once this score is reached."""
+
+    track_trajectory: bool = True
+    """Whether to log the best score at each callback interval."""
+
+    acceptance_window: int = 1000
+    """Window size for computing recent acceptance rate."""
+
 
 # ------------------------------------------------------------------
 # Result type
@@ -58,6 +70,10 @@ class MCMCResult:
     best_score: float = -math.inf
     iterations_total: int = 0
     chain_scores: list[float] = field(default_factory=list)
+    chain_keys: list[str] = field(default_factory=list)
+    score_trajectory: list[tuple[int, float]] = field(default_factory=list)
+    acceptance_rates: list[float] = field(default_factory=list)
+    early_stopped: bool = False
 
 
 # ------------------------------------------------------------------
@@ -125,7 +141,13 @@ def run_mcmc(
     )
     ct_idx = text_to_indices(ct_alpha, model.include_space)  # ciphertext as indices
 
+    global_iter = 0
+    threshold_reached = False
+
     for chain_idx in range(config.num_restarts):
+        if threshold_reached:
+            break
+
         key = _random_key()
 
         # Build a full inverse-mapping array for fast re-indexing
@@ -155,6 +177,9 @@ def run_mcmc(
         best_chain_plain: np.ndarray = plain_idx.copy()
 
         temperature = config.t_start
+        no_improve_count = 0
+        accept_count = 0
+        total_proposals = 0
 
         for it in range(1, config.iterations + 1):
             # --- Propose: swap two letters in the key ---
@@ -175,10 +200,12 @@ def run_mcmc(
 
             # --- Accept / Reject ---
             delta = proposed_score - current_score
+            total_proposals += 1
             if delta > 0 or random.random() < math.exp(delta / max(temperature, 1e-12)):
                 # Accept
                 current_score = proposed_score
                 plain_idx = proposed_plain_idx
+                accept_count += 1
             else:
                 # Reject — undo swap
                 key[i], key[j] = key[j], key[i]
@@ -190,11 +217,34 @@ def run_mcmc(
                 best_chain_score = current_score
                 best_chain_key = list(key)
                 best_chain_plain = plain_idx.copy()
+                no_improve_count = 0
+            else:
+                no_improve_count += 1
 
             # Track global best
             if current_score > result.best_score:
                 result.best_score = current_score
                 result.best_key = "".join(key)
+
+            # Score trajectory
+            if config.track_trajectory and it % config.callback_interval == 0:
+                global_iter += 1
+                result.score_trajectory.append(
+                    (chain_idx * config.iterations + it, result.best_score)
+                )
+                # Acceptance rate over recent window
+                window = min(total_proposals, config.acceptance_window)
+                rate = accept_count / max(total_proposals, 1)
+                result.acceptance_rates.append(rate)
+
+            # Early stopping: no improvement
+            if config.early_stop_patience and no_improve_count >= config.early_stop_patience:
+                break
+
+            # Early stopping: threshold reached
+            if config.score_threshold is not None and result.best_score >= config.score_threshold:
+                threshold_reached = True
+                break
 
             # Cool
             if temperature > config.t_min:
@@ -221,6 +271,7 @@ def run_mcmc(
                 )
 
         result.chain_scores.append(best_chain_score)
+        result.chain_keys.append("".join(best_chain_key))
         result.iterations_total += config.iterations
 
     # Decode final best plaintext

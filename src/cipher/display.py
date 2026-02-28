@@ -1,11 +1,15 @@
 """Rich-powered real-time terminal visualisation for cipher cracking.
 
 Makes the convergence process *visible and dramatic*.
+Phase 2 additions: score trajectory chart, key mapping grid,
+acceptance rate indicator, character frequency comparison.
 """
 
 from __future__ import annotations
 
+import string
 import time
+from collections import Counter
 
 from rich.console import Console
 from rich.layout import Layout
@@ -23,9 +27,13 @@ console = Console(force_terminal=True)
 
 
 class MCMCDisplay:
-    """Rich Live display for MCMC substitution-cipher cracking."""
+    """Rich Live display for MCMC substitution-cipher cracking.
 
-    def __init__(self, num_chains: int, total_iters_per_chain: int) -> None:
+    Phase 2: Adds score trajectory, key mapping grid, acceptance rate,
+    and character frequency comparison.
+    """
+
+    def __init__(self, num_chains: int, total_iters_per_chain: int, ciphertext: str = "") -> None:
         self.num_chains = num_chains
         self.total_iters = total_iters_per_chain
         self.start_time = time.time()
@@ -33,11 +41,18 @@ class MCMCDisplay:
         self.current_chain = 0
         self.current_iter = 0
         self.current_plaintext = ""
+        self.current_key = ""
         self.current_score = 0.0
         self.best_score = -1e18
         self.best_plaintext = ""
         self.temperature = 1.0
         self.chain_best_scores: list[float] = []
+
+        # Phase 2: score trajectory and acceptance rate
+        self.score_history: list[float] = []
+        self.accept_count = 0
+        self.total_proposals = 0
+        self.ciphertext = ciphertext
 
     def make_layout(self) -> Layout:
         layout = Layout()
@@ -47,8 +62,16 @@ class MCMCDisplay:
             Layout(name="footer", size=5),
         )
         layout["body"].split_row(
+            Layout(name="left", ratio=3),
+            Layout(name="right", ratio=2),
+        )
+        layout["left"].split_column(
             Layout(name="current", ratio=1),
+            Layout(name="trajectory", size=4),
+        )
+        layout["right"].split_column(
             Layout(name="stats", ratio=1),
+            Layout(name="keymap", size=6),
         )
         return layout
 
@@ -57,15 +80,17 @@ class MCMCDisplay:
 
         # Header
         elapsed = time.time() - self.start_time
+        accept_rate = self.accept_count / max(self.total_proposals, 1)
         header_text = Text(
-            f"  MCMC Cipher Cracker  │  Chain {self.current_chain + 1}/{self.num_chains}"
-            f"  │  Iter {self.current_iter:,}  │  {elapsed:.1f}s",
+            f"  MCMC Cipher Cracker  |  Chain {self.current_chain + 1}/{self.num_chains}"
+            f"  |  Iter {self.current_iter:,}  |  {elapsed:.1f}s"
+            f"  |  Accept: {accept_rate:.1%}",
             style="bold white on dark_blue",
         )
         layout["header"].update(Panel(header_text, style="dark_blue"))
 
         # Current decryption
-        pt_display = self.current_plaintext[:500] if self.current_plaintext else "…"
+        pt_display = self.current_plaintext[:500] if self.current_plaintext else "..."
         layout["current"].update(
             Panel(
                 Text(
@@ -79,6 +104,16 @@ class MCMCDisplay:
             )
         )
 
+        # Score trajectory sparkline
+        trajectory_str = self._sparkline(60)
+        layout["trajectory"].update(
+            Panel(
+                Text(f"Score: {trajectory_str}", style="bright_blue"),
+                title="[bold blue]Score Trajectory",
+                border_style="blue",
+            )
+        )
+
         # Stats table
         stats = Table(show_header=False, box=None, padding=(0, 2))
         stats.add_column("Key", style="bold")
@@ -87,27 +122,70 @@ class MCMCDisplay:
         stats.add_row("Current Score", f"{self.current_score:,.1f}")
         stats.add_row("Best Score", f"{self.best_score:,.1f}")
         stats.add_row("Chains Done", str(len(self.chain_best_scores)))
+        stats.add_row("Accept Rate", f"{accept_rate:.1%}")
 
-        # Add a mini bar for temperature
-        t_pct = max(0, min(100, int(self.temperature * 100)))
-        t_bar = "█" * (t_pct // 2) + "░" * (50 - t_pct // 2)
-        stats.add_row("Temp Bar", f"[red]{t_bar}[/red]")
+        # Temperature bar
+        t_frac = min(1.0, self.temperature / 50.0)
+        bar_len = 30
+        filled = int(t_frac * bar_len)
+        t_bar = "#" * filled + "-" * (bar_len - filled)
+        stats.add_row("Temp", f"[red]{t_bar}[/red]")
 
         layout["stats"].update(
             Panel(stats, title="[bold magenta]Statistics", border_style="magenta")
         )
 
+        # Key mapping display (compact)
+        key_display = self._render_key_mapping()
+        layout["keymap"].update(
+            Panel(
+                Text(key_display, style="bright_yellow"),
+                title="[bold yellow]Key Mapping",
+                border_style="yellow",
+            )
+        )
+
         # Footer — best decryption so far
-        best_display = self.best_plaintext[:300] if self.best_plaintext else "…"
+        best_display = self.best_plaintext[:300] if self.best_plaintext else "..."
         layout["footer"].update(
             Panel(
                 Text(best_display, style="bold bright_green"),
-                title="[bold green]★ Best Decryption",
+                title="[bold green]* Best Decryption",
                 border_style="green",
             )
         )
 
         return layout
+
+    def _sparkline(self, width: int = 60) -> str:
+        """Terminal sparkline of score trajectory."""
+        if not self.score_history:
+            return "..." * (width // 3)
+        scores = self.score_history
+        lo, hi = min(scores), max(scores)
+        rng = hi - lo if hi > lo else 1.0
+        blocks = " _.,:-=!#%@"
+        step = max(1, len(scores) // width)
+        sampled = scores[::step][:width]
+        return "".join(
+            blocks[min(int((s - lo) / rng * (len(blocks) - 1)), len(blocks) - 1)]
+            for s in sampled
+        )
+
+    def _render_key_mapping(self) -> str:
+        """Render the current key as cipher->plain mapping."""
+        if not self.current_key or len(self.current_key) < 26:
+            return "Waiting for key..."
+        lines = []
+        # Show two rows of 13 mappings
+        for start in (0, 13):
+            cipher_row = " ".join(f"{string.ascii_lowercase[i]}" for i in range(start, min(start + 13, 26)))
+            plain_row = " ".join(f"{self.current_key[i]}" for i in range(start, min(start + 13, len(self.current_key))))
+            lines.append(cipher_row)
+            lines.append(plain_row)
+            if start == 0:
+                lines.append("")
+        return "\n".join(lines)
 
     def callback(
         self,
@@ -122,9 +200,12 @@ class MCMCDisplay:
         self.current_chain = chain_idx
         self.current_iter = iteration
         self.current_plaintext = current_plaintext
+        self.current_key = current_key
         self.current_score = current_score
         self.best_score = best_score
         self.temperature = temperature
+        self.score_history.append(current_score)
+        self.total_proposals = chain_idx * self.total_iters + iteration
         if current_score >= best_score - 0.01:
             self.best_plaintext = current_plaintext
 
@@ -229,6 +310,7 @@ def print_result_box(
     plaintext: str,
     score: float,
     elapsed: float,
+    extra_info: dict | None = None,
 ) -> None:
     """Print a beautiful final-result panel."""
     table = Table(show_header=False, box=None, padding=(0, 2))
@@ -240,8 +322,12 @@ def print_result_box(
     table.add_row("Score", f"{score:,.2f}")
     table.add_row("Time", f"{elapsed:.2f}s")
 
+    if extra_info:
+        for k, v in extra_info.items():
+            table.add_row(k, str(v))
+
     console.print()
-    console.print(Panel(table, title="[bold green]★ Result", border_style="green"))
+    console.print(Panel(table, title="[bold green]* Result", border_style="green"))
     console.print()
     console.print(
         Panel(
