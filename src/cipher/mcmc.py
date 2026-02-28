@@ -174,7 +174,7 @@ def run_mcmc(
 
         best_chain_score = current_score
         best_chain_key = list(key)
-        best_chain_plain: np.ndarray = plain_idx.copy()
+        plain_idx.copy()
 
         temperature = config.t_start
         no_improve_count = 0
@@ -216,7 +216,7 @@ def run_mcmc(
             if current_score > best_chain_score:
                 best_chain_score = current_score
                 best_chain_key = list(key)
-                best_chain_plain = plain_idx.copy()
+                plain_idx.copy()
                 no_improve_count = 0
             else:
                 no_improve_count += 1
@@ -233,16 +233,22 @@ def run_mcmc(
                     (chain_idx * config.iterations + it, result.best_score)
                 )
                 # Acceptance rate over recent window
-                window = min(total_proposals, config.acceptance_window)
+                min(total_proposals, config.acceptance_window)
                 rate = accept_count / max(total_proposals, 1)
                 result.acceptance_rates.append(rate)
 
             # Early stopping: no improvement
-            if config.early_stop_patience and no_improve_count >= config.early_stop_patience:
+            if (
+                config.early_stop_patience
+                and no_improve_count >= config.early_stop_patience
+            ):
                 break
 
             # Early stopping: threshold reached
-            if config.score_threshold is not None and result.best_score >= config.score_threshold:
+            if (
+                config.score_threshold is not None
+                and result.best_score >= config.score_threshold
+            ):
                 threshold_reached = True
                 break
 

@@ -136,10 +136,14 @@ class NgramModel:
         if n == 0:
             return -1e18
         l1, l2, l3, l4 = self.lambdas
-        log_uni = self.log_uni  # type: ignore[assignment]
-        log_bi = self.log_bi  # type: ignore[assignment]
-        log_tri = self.log_tri  # type: ignore[assignment]
-        log_quad = self.log_quad  # type: ignore[assignment]
+        log_uni = self.log_uni
+        log_bi = self.log_bi
+        log_tri = self.log_tri
+        log_quad = self.log_quad
+        assert log_uni is not None
+        assert log_bi is not None
+        assert log_tri is not None
+        assert log_quad is not None
 
         total = 0.0
         for i in range(n):
@@ -167,7 +171,8 @@ class NgramModel:
         n = len(idx)
         if n < 4:
             return self.score_indices(idx)
-        log_quad = self.log_quad  # type: ignore[assignment]
+        log_quad = self.log_quad
+        assert log_quad is not None
         return float(log_quad[idx[:-3], idx[1:-2], idx[2:-1], idx[3:]].sum())
 
     # ------------------------------------------------------------------

@@ -57,6 +57,7 @@ def key_accuracy(true_key: str, found_key: str) -> float:
 @dataclass
 class PhaseTransitionResult:
     """Results of a phase transition experiment."""
+
     lengths: list[int] = field(default_factory=list)
     success_rates: list[float] = field(default_factory=list)
     avg_ser: list[float] = field(default_factory=list)
@@ -400,7 +401,11 @@ def run_benchmark(
         ser = symbol_error_rate(plaintext, freq_result)
         freq_score = model.score_quadgrams_fast(
             text_to_indices(
-                "".join(ch for ch in freq_result if ch in string.ascii_lowercase or ch == " "),
+                "".join(
+                    ch
+                    for ch in freq_result
+                    if ch in string.ascii_lowercase or ch == " "
+                ),
                 model.include_space,
             )
         )
@@ -419,7 +424,11 @@ def run_benchmark(
         ser = symbol_error_rate(plaintext, rand_result)
         rand_score = model.score_quadgrams_fast(
             text_to_indices(
-                "".join(ch for ch in rand_result if ch in string.ascii_lowercase or ch == " "),
+                "".join(
+                    ch
+                    for ch in rand_result
+                    if ch in string.ascii_lowercase or ch == " "
+                ),
                 model.include_space,
             )
         )

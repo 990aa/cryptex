@@ -14,7 +14,6 @@ from typing import Callable
 
 import numpy as np
 
-from cipher.ciphers import Playfair
 from cipher.ngram import NgramModel
 
 
@@ -47,6 +46,7 @@ PlayfairCallback = Callable[[int, int, str, float, float], None]
 # ------------------------------------------------------------------
 # Fast Playfair decrypt via lookup table
 # ------------------------------------------------------------------
+
 
 def _build_decrypt_table(key: list[int]) -> np.ndarray:
     """Build a 25×25 lookup table: table[ci, cj] → packed (pi*25+pj).
@@ -112,6 +112,7 @@ def _idx_to_str(plain: np.ndarray) -> str:
 # ------------------------------------------------------------------
 # Proposal moves
 # ------------------------------------------------------------------
+
 
 def _propose(key: list[int]) -> tuple[str, tuple]:
     move = random.choices(
@@ -191,6 +192,7 @@ def _undo(key: list[int], move_type: str, info: tuple) -> None:
 # Main cracker
 # ------------------------------------------------------------------
 
+
 def crack_playfair(
     ciphertext: str,
     model: NgramModel,
@@ -216,6 +218,7 @@ def crack_playfair(
     )
 
     log_quad = model.log_quad
+    assert log_quad is not None
 
     for chain_idx in range(config.num_restarts):
         perm = list(range(25))

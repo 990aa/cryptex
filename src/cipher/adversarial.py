@@ -9,10 +9,9 @@ Generates deliberately difficult ciphertexts designed to test failure modes:
 
 from __future__ import annotations
 
-import random
 import string
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from cipher.ciphers import SimpleSubstitution
 from cipher.evaluation import symbol_error_rate

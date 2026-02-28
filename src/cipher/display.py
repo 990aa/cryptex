@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import string
 import time
-from collections import Counter
 
 from rich.console import Console
 from rich.layout import Layout
@@ -33,7 +32,9 @@ class MCMCDisplay:
     and character frequency comparison.
     """
 
-    def __init__(self, num_chains: int, total_iters_per_chain: int, ciphertext: str = "") -> None:
+    def __init__(
+        self, num_chains: int, total_iters_per_chain: int, ciphertext: str = ""
+    ) -> None:
         self.num_chains = num_chains
         self.total_iters = total_iters_per_chain
         self.start_time = time.time()
@@ -179,8 +180,14 @@ class MCMCDisplay:
         lines = []
         # Show two rows of 13 mappings
         for start in (0, 13):
-            cipher_row = " ".join(f"{string.ascii_lowercase[i]}" for i in range(start, min(start + 13, 26)))
-            plain_row = " ".join(f"{self.current_key[i]}" for i in range(start, min(start + 13, len(self.current_key))))
+            cipher_row = " ".join(
+                f"{string.ascii_lowercase[i]}"
+                for i in range(start, min(start + 13, 26))
+            )
+            plain_row = " ".join(
+                f"{self.current_key[i]}"
+                for i in range(start, min(start + 13, len(self.current_key)))
+            )
             lines.append(cipher_row)
             lines.append(plain_row)
             if start == 0:

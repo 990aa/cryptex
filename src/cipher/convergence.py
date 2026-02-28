@@ -93,7 +93,14 @@ def plot_score_trajectory(
     if result.acceptance_rates:
         ax2 = ax1.twinx()
         rate_iters = iters[: len(result.acceptance_rates)]
-        ax2.plot(rate_iters, result.acceptance_rates, "r-", alpha=0.4, linewidth=0.8, label="Accept Rate")
+        ax2.plot(
+            rate_iters,
+            result.acceptance_rates,
+            "r-",
+            alpha=0.4,
+            linewidth=0.8,
+            label="Accept Rate",
+        )
         ax2.set_ylabel("Acceptance Rate", color="red")
         ax2.tick_params(axis="y", labelcolor="red")
         ax2.set_ylim(0, 1)
@@ -145,7 +152,12 @@ def chain_consensus(result: MCMCResult) -> dict[str, object]:
     """
     keys = result.chain_keys
     if not keys:
-        return {"agreement_rate": 0.0, "consensus_key": "", "per_letter_confidence": {}, "num_chains": 0}
+        return {
+            "agreement_rate": 0.0,
+            "consensus_key": "",
+            "per_letter_confidence": {},
+            "num_chains": 0,
+        }
 
     n_chains = len(keys)
     consensus_chars: list[str] = []
@@ -240,12 +252,36 @@ def key_confidence_heatmap(
 # ------------------------------------------------------------------
 
 
-ENGLISH_FREQ = np.array([
-    0.08167, 0.01492, 0.02782, 0.04253, 0.12702, 0.02228, 0.02015,
-    0.06094, 0.06966, 0.00153, 0.00772, 0.04025, 0.02406, 0.06749,
-    0.07507, 0.01929, 0.00095, 0.05987, 0.06327, 0.09056, 0.02758,
-    0.00978, 0.02360, 0.00150, 0.01974, 0.00074,
-])
+ENGLISH_FREQ = np.array(
+    [
+        0.08167,
+        0.01492,
+        0.02782,
+        0.04253,
+        0.12702,
+        0.02228,
+        0.02015,
+        0.06094,
+        0.06966,
+        0.00153,
+        0.00772,
+        0.04025,
+        0.02406,
+        0.06749,
+        0.07507,
+        0.01929,
+        0.00095,
+        0.05987,
+        0.06327,
+        0.09056,
+        0.02758,
+        0.00978,
+        0.02360,
+        0.00150,
+        0.01974,
+        0.00074,
+    ]
+)
 
 
 def frequency_comparison_plot(

@@ -185,7 +185,9 @@ def run_genetic(
         while len(new_pop) < config.population_size:
             # Tournament selection
             def _tournament() -> list[int]:
-                candidates = random.sample(range(config.population_size), config.tournament_size)
+                candidates = random.sample(
+                    range(config.population_size), config.tournament_size
+                )
                 best_c = max(candidates, key=lambda c: fitness[c])
                 return list(population[best_c])
 

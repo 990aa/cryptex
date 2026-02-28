@@ -50,12 +50,36 @@ class DetectionResult:
 # ------------------------------------------------------------------
 
 
-ENGLISH_FREQ = np.array([
-    0.08167, 0.01492, 0.02782, 0.04253, 0.12702, 0.02228, 0.02015,
-    0.06094, 0.06966, 0.00153, 0.00772, 0.04025, 0.02406, 0.06749,
-    0.07507, 0.01929, 0.00095, 0.05987, 0.06327, 0.09056, 0.02758,
-    0.00978, 0.02360, 0.00150, 0.01974, 0.00074,
-])
+ENGLISH_FREQ = np.array(
+    [
+        0.08167,
+        0.01492,
+        0.02782,
+        0.04253,
+        0.12702,
+        0.02228,
+        0.02015,
+        0.06094,
+        0.06966,
+        0.00153,
+        0.00772,
+        0.04025,
+        0.02406,
+        0.06749,
+        0.07507,
+        0.01929,
+        0.00095,
+        0.05987,
+        0.06327,
+        0.09056,
+        0.02758,
+        0.00978,
+        0.02360,
+        0.00150,
+        0.01974,
+        0.00074,
+    ]
+)
 
 
 def _ioc(text: str) -> float:
@@ -196,12 +220,16 @@ def detect_cipher_type(ciphertext: str) -> DetectionResult:
         # High IoC → substitution or transposition
         scores["substitution"] += 3.0
         scores["transposition"] += 3.0
-        reasoning_parts.append(f"High IoC ({ioc:.4f}) suggests mono-alphabetic or transposition")
+        reasoning_parts.append(
+            f"High IoC ({ioc:.4f}) suggests mono-alphabetic or transposition"
+        )
     elif ioc > 0.045:
         # Medium IoC → Playfair or short-key Vigenère
         scores["playfair"] += 2.0
         scores["vigenere"] += 1.5
-        reasoning_parts.append(f"Medium IoC ({ioc:.4f}) suggests Playfair or short Vigenère")
+        reasoning_parts.append(
+            f"Medium IoC ({ioc:.4f}) suggests Playfair or short Vigenère"
+        )
     else:
         # Low IoC → Vigenère with longer key
         scores["vigenere"] += 3.0
@@ -217,7 +245,9 @@ def detect_cipher_type(ciphertext: str) -> DetectionResult:
     elif entropy < 4.2:
         scores["substitution"] += 1.0
         scores["transposition"] += 0.5
-        reasoning_parts.append(f"Low entropy ({entropy:.2f}) suggests preserved letter distribution")
+        reasoning_parts.append(
+            f"Low entropy ({entropy:.2f}) suggests preserved letter distribution"
+        )
 
     # --- Autocorrelation (Vigenère detection) ---
     if features.autocorrelation_values:
@@ -256,7 +286,9 @@ def detect_cipher_type(ciphertext: str) -> DetectionResult:
     # Low chi-squared = close to English frequencies (substitution/transposition)
     if features.chi_squared < 0.5:
         scores["transposition"] += 2.0
-        reasoning_parts.append(f"Low chi² ({features.chi_squared:.3f}) — letter frequencies match English")
+        reasoning_parts.append(
+            f"Low chi² ({features.chi_squared:.3f}) — letter frequencies match English"
+        )
     elif features.chi_squared < 2.0:
         scores["substitution"] += 1.0
 

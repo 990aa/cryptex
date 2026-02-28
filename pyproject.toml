@@ -18,5 +18,11 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/cipher"]
 
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-timeout>=2.4.0",
+]
+
 [project.scripts]
 cipher = "cipher.cli:main"

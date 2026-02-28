@@ -133,9 +133,11 @@ def run_hmm(
 
     # Transition matrix (log): use bigram log-probs from the language model
     # log_trans[i, j] = log P(hidden_j | hidden_i)
+    assert model.log_bi is not None
     log_trans = model.log_bi.copy()  # (A, A)
 
     # Initial state distribution (log): use unigram
+    assert model.log_uni is not None
     log_pi = model.log_uni.copy()  # (A,)
 
     # Emission matrix (log): start near-uniform with slight random perturbation
@@ -257,7 +259,7 @@ def run_hmm(
         else:
             key_chars.append(chr(ord("a") + hidden_i - offset))
     result.best_key = "".join(key_chars)
-    result.best_plaintext = current_plaintext  # type: ignore[possibly-undefined]
-    result.best_score = ll  # type: ignore[possibly-undefined]
+    result.best_plaintext = current_plaintext
+    result.best_score = ll
 
     return result

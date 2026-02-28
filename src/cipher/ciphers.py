@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import random
 import string
-from typing import Protocol
+from typing import Any, Protocol
 
 
 # =====================================================================
@@ -286,7 +286,7 @@ class NoisyCipher:
 
     def __init__(
         self,
-        inner: CipherEngine,
+        inner: Any,
         corruption_rate: float = 0.05,
         deletion_rate: float = 0.02,
     ):
@@ -319,21 +319,21 @@ class NoisyCipher:
 # Convenience
 # =====================================================================
 
-ALL_CIPHERS: dict[str, CipherEngine] = {
-    "substitution": SimpleSubstitution(),  # type: ignore[abstract]
-    "vigenere": Vigenere(),  # type: ignore[abstract]
-    "transposition": ColumnarTransposition(),  # type: ignore[abstract]
-    "playfair": Playfair(),  # type: ignore[abstract]
+ALL_CIPHERS: dict[str, Any] = {
+    "substitution": SimpleSubstitution(),
+    "vigenere": Vigenere(),
+    "transposition": ColumnarTransposition(),
+    "playfair": Playfair(),
 }
 
 
-def get_engine(name: str) -> CipherEngine:
+def get_engine(name: str) -> Any:
     name = name.lower().strip()
     if name in ALL_CIPHERS:
         return ALL_CIPHERS[name]
     # Also accept with "noisy" prefix
     if name.startswith("noisy"):
         inner_name = name.replace("noisy", "").strip().strip("-_ ")
-        inner = ALL_CIPHERS.get(inner_name, SimpleSubstitution())  # type: ignore[abstract]
-        return NoisyCipher(inner)  # type: ignore[return-value]
+        inner = ALL_CIPHERS.get(inner_name, SimpleSubstitution())
+        return NoisyCipher(inner)
     raise ValueError(f"Unknown cipher: {name!r}. Choose from {list(ALL_CIPHERS)}")

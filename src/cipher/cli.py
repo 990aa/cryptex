@@ -19,7 +19,6 @@ Usage examples (all run through ``uv run``):
 from __future__ import annotations
 
 import argparse
-import io
 import os
 import sys
 import time
@@ -29,12 +28,12 @@ if sys.platform == "win32":
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
     if hasattr(sys.stdout, "reconfigure"):
         try:
-            sys.stdout.reconfigure(encoding="utf-8")
+            sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[call-non-callable]
         except Exception:
             pass
     if hasattr(sys.stderr, "reconfigure"):
         try:
-            sys.stderr.reconfigure(encoding="utf-8")
+            sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[call-non-callable]
         except Exception:
             pass
 
@@ -434,7 +433,9 @@ def cmd_analyse(args: argparse.Namespace) -> None:
     with Live(display.render(), console=console, refresh_per_second=8) as live:
 
         def cb(chain_idx, iteration, cur_key, cur_pt, cur_score, best_score, temp):
-            display.callback(chain_idx, iteration, cur_key, cur_pt, cur_score, best_score, temp)
+            display.callback(
+                chain_idx, iteration, cur_key, cur_pt, cur_score, best_score, temp
+            )
             live.update(display.render())
 
         result = run_mcmc(ciphertext, model, config, callback=cb)
@@ -528,6 +529,7 @@ def cmd_detect(args: argparse.Namespace) -> None:
     table = Table(title="Cipher Type Detection", show_header=True)
     table.add_column("Type", style="bold")
     table.add_column("Score", justify="right")
+    assert result.all_scores is not None
     for cipher_type, score in sorted(result.all_scores.items(), key=lambda x: -x[1]):
         style = "bold green" if cipher_type == result.predicted_type else ""
         table.add_row(cipher_type, f"{score:.1%}", style=style)
@@ -541,6 +543,7 @@ def cmd_detect(args: argparse.Namespace) -> None:
     console.print(f"[dim]Reasoning: {result.reasoning}")
 
     f = result.features
+    assert f is not None
     console.print("\n[bold cyan]Statistical Features:")
     console.print(f"  IoC: {f.ioc:.4f}  (English ~0.0667)")
     console.print(f"  Entropy: {f.entropy:.3f} bits")
@@ -564,7 +567,9 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
     model = get_model()
     console.print("[bold cyan]Running benchmark…")
     console.print(f"  Text length: {args.length}, Trials: {args.trials}")
-    console.print("  Methods: MCMC, Genetic Algorithm, Frequency Analysis, Random Restarts\n")
+    console.print(
+        "  Methods: MCMC, Genetic Algorithm, Frequency Analysis, Random Restarts\n"
+    )
 
     corpus = download_corpus()
 
@@ -631,7 +636,9 @@ def cmd_phase_transition(args: argparse.Namespace) -> None:
         model, corpus, lengths=lengths, trials_per_length=args.trials, callback=cb
     )
 
-    console.print(f"\n[bold]Phase Transition Threshold: ~{result.threshold_length} characters")
+    console.print(
+        f"\n[bold]Phase Transition Threshold: ~{result.threshold_length} characters"
+    )
 
     table = Table(title="Phase Transition Results", show_header=True)
     table.add_column("Length", justify="right")
@@ -693,7 +700,11 @@ def cmd_stress_test(_args: argparse.Namespace) -> None:
     for r in results:
         status = "[green]PASS" if r.success else "[red]FAIL"
         table.add_row(
-            r.case_name, f"{r.ser:.1%}", f"{r.score:,.1f}", f"{r.time_seconds:.1f}", status
+            r.case_name,
+            f"{r.ser:.1%}",
+            f"{r.score:,.1f}",
+            f"{r.time_seconds:.1f}",
+            status,
         )
 
     console.print()
