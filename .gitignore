@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+dist/
+build/
+src/cipher/data/corpus.txt
+src/cipher/data/*.pkl
