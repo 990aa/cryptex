@@ -13,7 +13,7 @@ Feed it encrypted gibberish and watch it converge on readable English.
 
 ```bash
 # Clone and enter the project
-git clone <repo-url>
+git clone https://github.com/990aa/uncipher.git
 cd cipher
 
 # Install dependencies (uv handles the virtual environment automatically)
