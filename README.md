@@ -144,29 +144,6 @@ uv run cipher language detect --text "bonjour le monde ceci est un test"
 
 Supported: English (built-in), French, German, Spanish. Each language model is trained from Gutenberg texts with accent transliteration.
 
-## Architecture
-
-```
-src/cipher/
-├── __init__.py
-├── cli.py                   # CLI entry point — 10 subcommands
-├── corpus.py                # Downloads & preprocesses Project Gutenberg texts
-├── ngram.py                 # Quadgram language model with interpolated smoothing
-├── ciphers.py               # 5 cipher engines (encrypt / decrypt / random_key)
-├── mcmc.py                  # MCMC Metropolis-Hastings solver (simulated annealing)
-├── hmm.py                   # HMM / Baum-Welch (EM) solver
-├── genetic.py               # Genetic algorithm solver (tournament + OX1 crossover)
-├── vigenere_cracker.py      # IoC + Kasiski + frequency analysis
-├── transposition_cracker.py # MCMC over column permutations
-├── playfair_cracker.py      # MCMC over 5×5 key matrix
-├── display.py               # Rich-powered real-time terminal visualisation
-├── convergence.py           # Convergence diagnostics, plots, chain consensus
-├── evaluation.py            # SER, phase transition, benchmarking framework
-├── detector.py              # Rule-based cipher type classifier
-├── languages.py             # Multi-language corpus & model support
-├── adversarial.py           # Adversarial stress test suite
-└── historical.py            # Curated historical cipher challenges
-```
 
 ## Cipher Complexity Progression
 
