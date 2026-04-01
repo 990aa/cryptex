@@ -7,3 +7,6 @@ dist/
 build/
 src/cipher/data/corpus.txt
 src/cipher/data/*.pkl
+data/
+logs/
+*.txt
