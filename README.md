@@ -14,29 +14,30 @@ Feed it encrypted gibberish and watch it converge on readable English.
 ```bash
 # Clone and enter the project
 git clone https://github.com/990aa/uncipher.git
-cd cipher
+cd uncipher
 
-# Install dependencies (uv handles the virtual environment automatically)
-uv sync
+# Install dependencies (dev deps included for running tests)
+uv sync --dev
 
 # Train the language model (downloads corpus from Project Gutenberg, ~30s first time)
 uv run cipher train
 
-# Run a live demo — encrypts sample text, then cracks it before your eyes
-uv run cipher demo --cipher substitution
+# Run live demos with verified deciphering output
+uv run cipher demo --cipher substitution --method mcmc
 uv run cipher demo --cipher vigenere
 uv run cipher demo --cipher transposition
-uv run cipher demo --cipher playfair
 
-# Crack your own ciphertext
-uv run cipher crack --cipher substitution --text "your ciphertext here"
-uv run cipher crack --cipher vigenere --text "your ciphertext here"
-uv run cipher crack --cipher substitution --method hmm --text "ciphertext"
-uv run cipher crack --cipher substitution --method genetic --text "ciphertext"
+# Crack custom ciphertext from files (verified)
+uv run cipher crack --cipher vigenere --file custom_vigenere_ciphertext.txt
 
-# Read ciphertext from a file
+# File-based cracking syntax
 uv run cipher crack --cipher substitution --file secret.txt
+
+# Full automated tests
+uv run pytest tests/ -v --timeout=300
 ```
+
+Verified run logs and outputs are documented in `docs/trials.md`.
 
 ## All Commands
 
@@ -75,8 +76,12 @@ uv run cipher analyse
 # Analyse your own ciphertext
 uv run cipher analyse --text "your ciphertext"
 
-# Save plots to a specific directory
+# Save plots to an existing directory
 uv run cipher analyse --output ./plots
+
+# If using a new output directory, create it first
+mkdir results
+uv run cipher analyse --output ./results
 ```
 
 Generates:
@@ -99,7 +104,11 @@ Uses statistical features (Index of Coincidence, entropy, chi-squared, bigram re
 # Default: 300-char texts, 3 trials per method
 uv run cipher benchmark
 
-# Custom settings
+# Custom settings (existing output directory)
+uv run cipher benchmark --length 200 --trials 5 --output ./plots
+
+# If using a new output directory, create it first
+mkdir results
 uv run cipher benchmark --length 200 --trials 5 --output ./results
 ```
 
@@ -108,6 +117,11 @@ Compares MCMC, Genetic Algorithm, frequency analysis, and random restarts on ide
 ### Phase Transition Analysis
 
 ```bash
+# Existing output directory
+uv run cipher phase-transition --trials 3 --output ./plots
+
+# If using a new output directory, create it first
+mkdir results
 uv run cipher phase-transition --trials 3 --output ./results
 ```
 
