@@ -257,23 +257,29 @@ def _frequency_init_perm(ct_idx: np.ndarray, include_space: bool) -> np.ndarray:
 def _auto_config(ciphertext_len: int, base: MCMCConfig) -> MCMCConfig:
     """Scale MCMC settings by ciphertext length."""
     cfg = dataclasses.replace(base)
+    defaults = MCMCConfig()
+
+    def _maybe_set(name: str, value):  # noqa: ANN001
+        if getattr(cfg, name) == getattr(defaults, name):
+            setattr(cfg, name, value)
+
     if ciphertext_len < 30:
-        cfg.iterations = 100_000
-        cfg.num_restarts = 20
-        cfg.t_start = 20.0
-        cfg.cooling_rate = 0.99990
-        cfg.use_parallel_tempering = False
+        _maybe_set("iterations", 100_000)
+        _maybe_set("num_restarts", 20)
+        _maybe_set("t_start", 20.0)
+        _maybe_set("cooling_rate", 0.99990)
+        _maybe_set("use_parallel_tempering", False)
     elif ciphertext_len < 80:
-        cfg.iterations = 80_000
-        cfg.num_restarts = 12
-        cfg.t_start = 40.0
+        _maybe_set("iterations", 80_000)
+        _maybe_set("num_restarts", 12)
+        _maybe_set("t_start", 40.0)
     elif ciphertext_len < 200:
-        cfg.iterations = 50_000
-        cfg.num_restarts = 8
+        _maybe_set("iterations", 50_000)
+        _maybe_set("num_restarts", 8)
     else:
-        cfg.iterations = 30_000
-        cfg.num_restarts = 6
-        cfg.t_start = 60.0
+        _maybe_set("iterations", 30_000)
+        _maybe_set("num_restarts", 6)
+        _maybe_set("t_start", 60.0)
     return cfg
 
 
