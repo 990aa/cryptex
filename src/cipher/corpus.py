@@ -13,10 +13,8 @@ from pathlib import Path
 
 import requests
 
--
 # Project Gutenberg plain-text URLs (mirrors tend to be stable)
 # We pick a range of genres / time periods for diversity.
--
 GUTENBERG_URLS: list[tuple[str, str]] = [
     ("Pride and Prejudice", "https://www.gutenberg.org/cache/epub/1342/pg1342.txt"),
     ("Moby Dick", "https://www.gutenberg.org/cache/epub/2701/pg2701.txt"),
