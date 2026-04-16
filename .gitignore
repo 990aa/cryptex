@@ -10,3 +10,4 @@ src/cipher/data/*.pkl
 data/
 logs/
 *.txt
+.ruff_cache/
