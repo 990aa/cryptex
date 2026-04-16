@@ -6,6 +6,7 @@ import math
 import string
 from collections import Counter
 from dataclasses import dataclass
+from threading import Event
 from typing import Callable
 
 import numpy as np
@@ -310,6 +311,7 @@ def crack_vigenere(
     model: NgramModel,
     config: VigenereConfig | None = None,
     callback: VigenereCallback | None = None,
+    stop_event: Event | None = None,
 ) -> VigenereResult:
     """Crack Vigenere using IoC+Kasiski+adaptive n-gram scoring."""
     if config is None:
@@ -334,6 +336,8 @@ def crack_vigenere(
 
     rank = 0
     for kl in candidate_lengths:
+        if stop_event is not None and stop_event.is_set():
+            break
         rank += 1
         shifts = [
             _solve_caesar_ngram(_get_subseq(letters, kl, pos), model)

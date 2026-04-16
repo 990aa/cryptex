@@ -10,6 +10,7 @@ import math
 import random
 import warnings
 from dataclasses import dataclass
+from threading import Event
 from typing import Callable
 
 import numpy as np
@@ -224,6 +225,7 @@ def crack_playfair(
     model: NgramModel,
     config: PlayfairConfig | None = None,
     callback: PlayfairCallback | None = None,
+    stop_event: Event | None = None,
 ) -> PlayfairResult:
     """Crack a Playfair cipher using population-based hill climbing."""
     if config is None:
@@ -264,6 +266,8 @@ def crack_playfair(
     pop_size = max(2, int(config.population_size))
 
     for chain_idx in range(config.num_restarts):
+        if stop_event is not None and stop_event.is_set():
+            break
         population: list[_Candidate] = []
         for _ in range(pop_size):
             key = list(range(25))
@@ -280,6 +284,8 @@ def crack_playfair(
         temperature = float(config.t_start)
 
         for it in range(1, config.iterations + 1):
+            if stop_event is not None and stop_event.is_set():
+                break
             ranked_idx = sorted(
                 range(len(population)),
                 key=lambda i: population[i].score,

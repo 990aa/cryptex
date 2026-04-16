@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import string
 from dataclasses import dataclass
+from threading import Event
 from typing import Callable
 
 from cryptex.core.ngram import NgramModel, text_to_indices
@@ -57,6 +58,7 @@ def crack_affine(
     model: NgramModel,
     config: AffineConfig | None = None,
     callback: AffineCallback | None = None,
+    stop_event: Event | None = None,
 ) -> AffineResult:
     """Solve affine cipher by scoring all valid keys."""
     if config is None:
@@ -67,7 +69,11 @@ def crack_affine(
 
     trial = 0
     for a in valid_a:
+        if stop_event is not None and stop_event.is_set():
+            break
         for b in range(26):
+            if stop_event is not None and stop_event.is_set():
+                break
             trial += 1
             pt = _decrypt_affine(ciphertext, a, b)
             idx = text_to_indices(pt, include_space=model.include_space)

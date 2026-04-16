@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 import random
 from dataclasses import dataclass, field
+from threading import Event
 from typing import Callable
 
 
@@ -48,6 +49,7 @@ def _run_chain(
     config: TranspositionConfig,
     chain_idx: int,
     callback: TranspositionCallback | None,
+    stop_event: Event | None,
 ) -> tuple[list[int], str, float]:
     """Run a single MCMC chain for a fixed number of columns."""
     key = list(range(ncols))
@@ -62,6 +64,8 @@ def _run_chain(
     temperature = config.t_start
 
     for it in range(1, config.iterations + 1):
+        if stop_event is not None and stop_event.is_set():
+            break
         # Propose: swap two columns
         i, j = random.sample(range(ncols), 2)
         key[i], key[j] = key[j], key[i]
@@ -95,6 +99,7 @@ def crack_transposition(
     model: NgramModel,
     config: TranspositionConfig | None = None,
     callback: TranspositionCallback | None = None,
+    stop_event: Event | None = None,
 ) -> TranspositionResult:
     """Crack a columnar transposition cipher.
 
@@ -107,14 +112,24 @@ def crack_transposition(
     ct_len = len(ciphertext)
 
     for ncols in range(config.min_cols, config.max_cols + 1):
+        if stop_event is not None and stop_event.is_set():
+            break
         # Column count must evenly divide ciphertext length (after padding)
         # We allow slight mismatch — the cipher may have padded
         if ct_len % ncols != 0:
             continue
 
         for restart in range(config.num_restarts):
+            if stop_event is not None and stop_event.is_set():
+                break
             key, pt, score = _run_chain(
-                ciphertext, ncols, model, config, restart, callback
+                ciphertext,
+                ncols,
+                model,
+                config,
+                restart,
+                callback,
+                stop_event,
             )
             result.iterations_total += config.iterations
 

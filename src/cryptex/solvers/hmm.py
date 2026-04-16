@@ -14,6 +14,7 @@ from __future__ import annotations
 import math
 import string
 from dataclasses import dataclass, field
+from threading import Event
 from typing import Callable
 
 import numpy as np
@@ -122,6 +123,7 @@ def run_hmm(
     config: HMMConfig | None = None,
     callback: HMMCallback | None = None,
     noise_rate: float = 0.05,
+    stop_event: Event | None = None,
 ) -> HMMResult:
     """Crack a noisy substitution cipher using HMM/EM (Baum-Welch).
 
@@ -193,6 +195,8 @@ def run_hmm(
     current_plaintext = ""
 
     for em_iter in range(1, config.max_iter + 1):
+        if stop_event is not None and stop_event.is_set():
+            break
         # ==============================================================
         # E-step: Forward-Backward
         # ==============================================================

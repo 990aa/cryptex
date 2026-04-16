@@ -11,6 +11,7 @@ import math
 import random
 import string
 from dataclasses import dataclass, field
+from threading import Event
 from typing import Callable
 
 import numpy as np
@@ -238,6 +239,47 @@ def _order_crossover_vec(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
     return child
 
 
+def _normalise_fixed_mapping(
+    fixed_mapping: dict[str, str] | None,
+) -> dict[str, str]:
+    if not fixed_mapping:
+        return {}
+
+    normalised: dict[str, str] = {}
+    used_plain: set[str] = set()
+    used_cipher: set[str] = set()
+    for cipher_ch, plain_ch in fixed_mapping.items():
+        c = cipher_ch.lower()
+        p = plain_ch.lower()
+        if c not in string.ascii_lowercase or p not in string.ascii_lowercase:
+            continue
+        if c in used_cipher and normalised.get(c) != p:
+            raise ValueError(f"Conflicting fixed mapping for cipher letter '{c}'")
+        if p in used_plain and any(v == p and k != c for k, v in normalised.items()):
+            raise ValueError(f"Plain letter '{p}' is fixed by multiple cipher letters")
+        used_cipher.add(c)
+        used_plain.add(p)
+        normalised[c] = p
+    return normalised
+
+
+def _apply_fixed_mapping_to_perm(
+    perm: np.ndarray,
+    fixed_mapping: dict[str, str],
+) -> None:
+    """Mutate plain->cipher permutation so fixed mappings are satisfied."""
+    if not fixed_mapping:
+        return
+
+    for cipher_ch, plain_ch in fixed_mapping.items():
+        target_plain = ord(plain_ch) - ord("a")
+        target_cipher = ord(cipher_ch) - ord("a")
+        current_plain = int(np.where(perm == target_cipher)[0][0])
+        if current_plain == target_plain:
+            continue
+        perm[target_plain], perm[current_plain] = perm[current_plain], perm[target_plain]
+
+
 def _frequency_init_perm(ct_idx: np.ndarray, include_space: bool) -> np.ndarray:
     """Initialize permutation by aligning cipher frequencies to English."""
     A = 27 if include_space else 26
@@ -318,6 +360,8 @@ def run_mcmc(
     model: NgramModel,
     config: MCMCConfig | None = None,
     callback: ProgressCallback | None = None,
+    stop_event: Event | None = None,
+    fixed_mapping: dict[str, str] | None = None,
 ) -> MCMCResult:
     """Run multiple MCMC chains and return the best decryption found.
 
@@ -338,6 +382,14 @@ def run_mcmc(
     """
     if config is None:
         config = MCMCConfig()
+
+    fixed_mapping_norm = _normalise_fixed_mapping(fixed_mapping)
+    fixed_plain_positions = {
+        ord(plain) - ord("a") for plain in fixed_mapping_norm.values()
+    }
+    free_plain_positions = [
+        i for i in range(26) if i not in fixed_plain_positions
+    ]
 
     if config.random_seed is not None:
         random.seed(config.random_seed)
@@ -365,6 +417,8 @@ def run_mcmc(
     best_perm_global: np.ndarray | None = None
 
     for chain_idx in range(config.num_restarts):
+        if stop_event is not None and stop_event.is_set():
+            break
         if threshold_reached:
             break
 
@@ -379,6 +433,7 @@ def run_mcmc(
                 perm = _frequency_init_perm(ct_idx, include_space)
             else:
                 perm = _random_perm()
+            _apply_fixed_mapping_to_perm(perm, fixed_mapping_norm)
             inv = _build_inv_map(perm, include_space, A)
             score = model.score_quadgrams_with_mapping(ct_idx, inv)
 
@@ -413,11 +468,15 @@ def run_mcmc(
         cold_no_improve = 0
 
         for it in range(1, config.iterations + 1):
+            if stop_event is not None and stop_event.is_set():
+                break
             if threshold_reached:
                 break
 
             # Metropolis updates in each replica.
             for ridx, replica in enumerate(replicas):
+                if stop_event is not None and stop_event.is_set():
+                    break
                 temp = float(temperatures[ridx])
                 current_score = replica.score
 
@@ -429,6 +488,7 @@ def run_mcmc(
                 if use_crossover:
                     assert best_perm_global is not None
                     proposal_perm = _order_crossover_vec(replica.perm, best_perm_global)
+                    _apply_fixed_mapping_to_perm(proposal_perm, fixed_mapping_norm)
                     proposal_inv = _build_inv_map(proposal_perm, include_space, A)
                     proposal_score = model.score_quadgrams_with_mapping(
                         ct_idx,
@@ -451,7 +511,10 @@ def run_mcmc(
                         replica.accepts_window += 1
                         current_score = float(proposal_score)
                 else:
-                    i, j = random.sample(range(26), 2)
+                    candidate_positions = free_plain_positions
+                    if len(candidate_positions) < 2:
+                        continue
+                    i, j = random.sample(candidate_positions, 2)
                     _update_inv_map_swap(replica.inv, replica.perm, i, j, offset)
                     proposal_score = model.score_quadgrams_with_mapping(
                         ct_idx, replica.inv

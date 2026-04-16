@@ -10,6 +10,7 @@ import math
 import random
 import string
 from dataclasses import dataclass, field
+from threading import Event
 from typing import Callable
 
 import numpy as np
@@ -125,6 +126,7 @@ def run_genetic(
     model: NgramModel,
     config: GeneticConfig | None = None,
     callback: GeneticCallback | None = None,
+    stop_event: Event | None = None,
 ) -> GeneticResult:
     """Solve a substitution cipher using a genetic algorithm.
 
@@ -158,6 +160,8 @@ def run_genetic(
     n_elite = max(1, int(config.population_size * config.elite_fraction))
 
     for gen in range(1, config.generations + 1):
+        if stop_event is not None and stop_event.is_set():
+            break
         # Sort by fitness (descending)
         order = np.argsort(fitness)[::-1]
         population = [population[i] for i in order]

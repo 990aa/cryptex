@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import string
 from dataclasses import dataclass
+from threading import Event
 from typing import Callable
 
 from cryptex.core.ngram import NgramModel, text_to_indices
@@ -78,6 +79,7 @@ def crack_railfence(
     model: NgramModel,
     config: RailFenceConfig | None = None,
     callback: RailFenceCallback | None = None,
+    stop_event: Event | None = None,
 ) -> RailFenceResult:
     if config is None:
         config = RailFenceConfig()
@@ -85,6 +87,8 @@ def crack_railfence(
     result = RailFenceResult()
 
     for rails in range(max(2, config.min_rails), max(2, config.max_rails) + 1):
+        if stop_event is not None and stop_event.is_set():
+            break
         pt = _decrypt_railfence(ciphertext, rails)
         idx = text_to_indices(pt, include_space=model.include_space)
         score = model.score_adaptive(idx)
