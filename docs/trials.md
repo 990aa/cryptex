@@ -1,134 +1,133 @@
-# Trial Log (2026-04-02)
+# Trial Log 
 
-This file records successful command runs and successful deciphering trials executed from `docs/TESTING.md` plus additional custom-text validation runs.
+This log captures the latest validation run for the codebase,
+including custom-input experiments, edge cases, and observed failures.
 
 ## Environment
 
 - OS: Windows
-- Working directory: project root
 - Runner: `uv run ...`
+- Working directory: repository root
 
-## Successful Script Runs (Command Completed)
+## 2) Benchmark Plot Validation (Success Rate Fix)
 
-1. `uv run cipher train`
-- Output: `Models ready`, both space and no-space models loaded.
+Command:
 
-2. `uv run pytest tests/ -v --timeout=300`
-- Output: `251 passed in 182.75s`.
+```bash
+uv run cipher benchmark --length 120 --trials 1 --success-threshold 0.25 --output ./plots
+```
 
-3. `uv run cipher demo --cipher substitution --method mcmc`
-- Output: final result box printed with decrypted English text.
+Observed table:
 
-4. `uv run cipher demo --cipher substitution --method hmm`
-- Output: completed 100 iterations and printed final result box.
+- MCMC: Avg SER 0.0%, Success Rate 100%, Avg Time 1.3s
+- Genetic Algorithm: Avg SER 0.0%, Success Rate 100%, Avg Time 5.8s
+- Frequency Analysis: Avg SER 73.5%, Success Rate 0%, Avg Time 0.0s
+- Random Restarts: Avg SER 100.0%, Success Rate 0%, Avg Time 0.0s
 
-5. `uv run cipher demo --cipher substitution --method genetic`
-- Output: completed 1000 generations and printed final result box.
+Observed artifact:
 
-6. `uv run cipher demo --cipher vigenere`
-- Output: recovered key and printed decrypted English text.
+- `plots/benchmark.png` saved
 
-7. `uv run cipher demo --cipher transposition`
-- Output: recovered column key and printed decrypted English text.
+Result:
 
-8. `uv run cipher demo --cipher playfair`
-- Output: completed all chains and printed final result box.
+- Success-rate bars were populated and annotated.
+- Threshold (`SER <= 25%`) was applied correctly.
 
-9. `uv run cipher demo --cipher noisy-substitution --method hmm`
-- Output: completed 100 iterations and printed final result box.
+## 3) Auto-Orchestration Trial (Low Confidence Input)
 
-10. `uv run cipher detect --text "wkh txlfn eurzq ira mxpsv ryhu wkh odcb grj dqg ihow txlwh jrrg derxw lw"`
-- Output: predicted type table printed.
+Command:
 
-11. `uv run cipher detect --text "lxfopvefrnhr"`
-- Output: predicted type table printed.
+```bash
+uv run cipher crack --auto --text "xqzv 9988 @@ lxfopv ef rnhr -- ???"
+```
 
-12. `uv run cipher analyse --output ./plots`
-- Output: saved `plots/convergence_plot.png`, `plots/key_heatmap.png`, `plots/frequency_comparison.png`.
+Observed output summary:
 
-13. `uv run cipher benchmark --trials 3 --length 300 --output ./plots`
-- Output: benchmark table printed and `plots/benchmark.png` saved.
+- Auto-detect: `vigenere (61.1% confidence)`
+- Low-confidence competitive run executed 3 candidates:
+  - Substitution MCMC score: `-24.77`
+  - Substitution HMM score: `-27.44`
+  - Vigenere score: `-79.23`
+- Winner selected: Substitution MCMC
+- Decrypted preview: `rave 9988 @@ brouse to ging -- ???`
 
-14. `uv run cipher phase-transition --trials 2 --output ./plots`
-- Output: phase-transition table printed and `plots/phase_transition.png` saved.
+Interpretation:
 
-15. `uv run cipher stress-test`
-- Output: full stress-test table printed (8 cases).
+- Routing behavior is correct for ambiguous/noisy payloads.
+- Output quality is limited when input is very short and mixed with symbols.
 
-16. `uv run cipher historical`
-- Output: all 6 historical challenges executed and reported.
+## 4) Custom Input Matrix (Programmatic Trials)
 
-17. `uv run cipher language list`
-- Output: english, french, german, spanish listed.
+The following trial matrix was produced by a direct solver harness (same runtime environment).
 
-18. `uv run cipher language train --lang french`
-- Output: `Done! Alphabet size: 27`.
+| Case | Input Length | Key Result | SER | Score | Outcome |
+| --- | ---: | --- | ---: | ---: | --- |
+| substitution_clean | 144 | plaintext largely recovered | 0.0171 | -229.93 | pass |
+| substitution_dirty_unicode_punct | 79 (core 62) | preserved layout but poor decipherment | 0.7451 (core) | -167.80 | fail |
+| vigenere_custom | 112 | recovered key `citterciphez` (incorrect) | 0.2449 | -478.09 | fail |
+| transposition_custom | 155 | detected columns = 5, exact plaintext recovery | 0.0000 | -322.03 | pass |
+| playfair_custom | 70 | low-quality decryption on short sample | 0.9851 (alpha) | -293.30 | fail |
+| substitution_too_short_expected_failure | 17 | partial output only | 0.3571 | -18.57 | expected fail |
+| detector_low_confidence_mixed | n/a | predicted `vigenere` @ 0.6111 confidence | n/a | n/a | ambiguous (expected) |
+| homophonic_heuristic_symbol_rich | n/a | heuristic flagged true | n/a | n/a | warning path works |
 
-19. `uv run cipher language detect --text "bonjour le monde comment allez vous"`
-- Output: language detection scores printed.
+Notes:
 
-20. `uv run cipher language detect --text "the quick brown fox jumps over the lazy dog"`
-- Output: language detection scores printed.
+- Substitution and transposition are strong on sufficient length.
+- Vigenere and Playfair quality dropped for these short custom samples.
+- Dirty text handling preserved format, but short core text still limited recovery.
 
-21. `uv run cipher crack --cipher substitution --method mcmc --text "wkh txlfn eurzq ira mxpsv ryhu wkh odcb grj dqg ihow txlwh jrrg derxw lw"`
-- Output: completed run with final result box.
+## 5) Failure Cases (CLI)
 
-22. `echo "wkh txlfn eurzq ira mxpsv ryhu wkh odcb grj" > secret.txt; uv run cipher crack --cipher substitution --text "$(cat secret.txt)"`
-- Output: completed run with final result box.
+### 5.1 Missing file path
 
-23. `uv run cipher crack --cipher substitution --file secret.txt`
-- Output: completed run with final result box.
+Command:
 
-24. `uv run cipher crack --cipher substitution --method mcmc --file custom_ciphertext.txt`
-- Output: completed run with final result box.
+```bash
+uv run cipher crack --cipher substitution --file does_not_exist.txt
+```
 
-25. `uv run cipher crack --cipher vigenere --file custom_vigenere_ciphertext.txt`
-- Output: recovered key `cipher` and printed decrypted custom plaintext.
+Observed output:
 
-26. `New-Item -ItemType Directory -Force results | Out-Null; uv run cipher benchmark --length 200 --trials 1 --output ./results`
-- Output: benchmark completed and `results/benchmark.png` saved.
+```text
+Error reading file 'does_not_exist.txt': [Errno 2] No such file or directory: 'does_not_exist.txt'
+```
 
-27. `uv run cipher phase-transition --trials 1 --output ./results`
-- Output: phase-transition completed and `results/phase_transition.png` saved.
+Status:
 
-## Successful Deciphering Confirmations
+- expected fail
+- clean user-facing error (no traceback)
 
-1. Substitution demo (MCMC)
-- Command: `uv run cipher demo --cipher substitution --method mcmc`
-- Output plaintext started with: `it is a truth universally acknowledged...`
-- Confirmation: successful deciphering of demo text.
+### 5.2 Non-alphabetic payload
 
-2. Vigenere demo
-- Command: `uv run cipher demo --cipher vigenere`
-- Output key: `abrqsk`
-- Output plaintext started with: `it is a truth universally acknowledged...`
-- Confirmation: successful deciphering of demo text.
+Command:
 
-3. Transposition demo
-- Command: `uv run cipher demo --cipher transposition`
-- Output key: `[0, 3, 4, 1, 2, 5]`
-- Output plaintext started with: `it is a truth universally acknowledged...`
-- Confirmation: successful deciphering of demo text.
+```bash
+uv run cipher crack --cipher substitution --text '1234 !!! ### $$$'
+```
 
-4. Analysis mode (MCMC)
-- Command: `uv run cipher analyse --output ./plots`
-- Output metric: `Symbol Error Rate: 0.0%`
-- Confirmation: successful deciphering of generated analysis sample.
+Observed output:
 
-5. Historical challenge (Caesar)
-- Command: `uv run cipher historical`
-- Output metric for Caesar case: `SER: 0.0% PASS`
-- Confirmation: successful deciphering for at least one historical challenge.
+```text
+Error: no decipherable alphabetic content found.
+```
 
-6. Custom text (Vigenere file)
-- Command: `uv run cipher crack --cipher vigenere --file custom_vigenere_ciphertext.txt`
-- Output key: `cipher`
-- Output plaintext:
-  `this is custom text for vigenere cracking validation and it should decrypt back to the exact original message when the model has enough context from repeated english patterns and spaces`
-- Confirmation: successful deciphering of custom ciphertext.
+Status:
 
-7. Exact custom-text match check
-- Command:
-  `uv run python -c "from cipher.ngram import get_model; from cipher.vigenere_cracker import crack_vigenere, VigenereConfig; from pathlib import Path; ct=Path('custom_vigenere_ciphertext.txt').read_text().strip(); pt=Path('custom_vigenere_plaintext.txt').read_text().strip(); res=crack_vigenere(ct, get_model(), VigenereConfig()); print('key=',res.best_key); print('exact_match=', res.best_plaintext.strip()==pt); print('decrypted=', res.best_plaintext.strip())"`
-- Output: `key= cipher`, `exact_match= True`
-- Confirmation: exact plaintext recovery confirmed programmatically.
+- expected fail
+- robust input guard works
+
+## 6) Generated/Verified Artifacts
+
+- `plots/benchmark.png`
+- `plots/convergence_plot.png` (previously generated and still valid)
+- `plots/key_heatmap.png` (previously generated and still valid)
+- `plots/frequency_comparison.png` (previously generated and still valid)
+- `plots/phase_transition.png` (previously generated and still valid)
+
+## 7) Summary
+
+- Benchmark success-rate plotting issue: resolved and validated.
+- Lint/format/type/test checks: all passing.
+- CLI failure paths for file input and non-alphabetic text: cleanly handled.
+- Custom-input trials show strong performance on substitution/transposition with enough signal, and known weaknesses on short/noisy Playfair and Vigenere samples.
