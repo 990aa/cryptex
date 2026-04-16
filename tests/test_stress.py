@@ -46,6 +46,12 @@ MEDIUM_TEXT = (
 
 SHORT_TEXT = "the quick brown fox jumps over the lazy dog and then runs away fast"
 
+SHORT_TEXTS = [
+    "the",
+    "hello world",
+    "quick fox",
+]
+
 
 # End-to-end: MCMC substitution cracking
 
@@ -80,6 +86,16 @@ class TestMCMCEndToEnd:
         # Short text is harder; just verify solver ran
         assert result.best_plaintext != ""
         assert result.best_key != ""
+
+    @pytest.mark.parametrize("pt", SHORT_TEXTS)
+    @pytest.mark.timeout(60)
+    def test_mcmc_short_text_doesnt_crash(self, model, pt: str) -> None:
+        from cryptex.solvers.mcmc import run_mcmc
+
+        key = SimpleSubstitution.random_key()
+        ct = SimpleSubstitution.encrypt(pt, key)
+        result = run_mcmc(ct, model)
+        assert result.best_plaintext is not None
 
 
 # End-to-end: HMM substitution cracking

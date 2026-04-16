@@ -169,3 +169,20 @@ class TestMCMCSolver:
         config = MCMCConfig(iterations=1000, num_restarts=1)
         result = run_mcmc(ct, trained_model, config)
         assert len(result.chain_scores) == 1
+
+    @pytest.mark.timeout(120)
+    def test_mcmc_deterministic_with_seed(
+        self, trained_model, sample_plaintext
+    ) -> None:
+        from cryptex.ciphers import SimpleSubstitution
+        from cryptex.mcmc import MCMCConfig, run_mcmc
+
+        key = SimpleSubstitution.random_key()
+        ct = SimpleSubstitution.encrypt(sample_plaintext, key)
+        config = MCMCConfig(random_seed=42, num_restarts=2, iterations=10_000)
+
+        r1 = run_mcmc(ct, trained_model, config)
+        r2 = run_mcmc(ct, trained_model, config)
+
+        assert r1.best_score == r2.best_score
+        assert r1.best_key == r2.best_key

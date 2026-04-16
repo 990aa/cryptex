@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import string
+
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
 
 class TestGhostMapping:
     def test_extract_core_text(self) -> None:
@@ -52,3 +57,23 @@ class TestAlphabetDiscovery:
         large = "".join(chr(33 + i) for i in range(50))
         assert likely_homophonic_cipher(small, threshold=40) is False
         assert likely_homophonic_cipher(large, threshold=40) is True
+
+
+class TestGhostMappingProperty:
+    @given(
+        st.text(
+            alphabet=string.ascii_lowercase + string.ascii_uppercase + " ",
+            min_size=50,
+            max_size=500,
+        )
+    )
+    @settings(max_examples=100)
+    def test_ghost_map_roundtrip_property(self, text: str) -> None:
+        from cryptex.io import ghost_map_text, restore_ghost_text
+
+        mapping = ghost_map_text(text)
+        restored = restore_ghost_text(mapping.core_text, mapping)
+
+        orig_letters = [c for c in text if c.isalpha()]
+        rest_letters = [c for c in restored if c.isalpha()]
+        assert orig_letters == [c.lower() for c in rest_letters]
