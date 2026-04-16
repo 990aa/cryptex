@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import string
 from dataclasses import dataclass, field
+from threading import Event
+
+from cryptex.core.ngram import NgramModel
+from cryptex.solvers.mcmc import MCMCConfig, MCMCResult, ProgressCallback, run_mcmc
 
 
 @dataclass
@@ -126,3 +130,61 @@ def known_plaintext_attack(ciphertext: str, known_plaintext: str) -> KPAResult:
 
     return result
 
+
+def _extract_fixed_mapping(
+    known_pairs: list[tuple[str, str]],
+) -> dict[str, str]:
+    """Extract deterministic cipher->plain mappings from known aligned pairs."""
+    fixed_mapping: dict[str, str] = {}
+    used_plain: set[str] = set()
+
+    for pt_frag, ct_frag in known_pairs:
+        for p, c in zip(pt_frag.lower(), ct_frag.lower()):
+            if p not in string.ascii_lowercase or c not in string.ascii_lowercase:
+                continue
+            if c in fixed_mapping and fixed_mapping[c] != p:
+                raise ValueError(
+                    f"Conflicting known-plaintext mapping for cipher letter '{c}'"
+                )
+            if p in used_plain and fixed_mapping.get(c) != p:
+                raise ValueError(
+                    f"Plain letter '{p}' is assigned by multiple cipher letters"
+                )
+            fixed_mapping[c] = p
+            used_plain.add(p)
+
+    return fixed_mapping
+
+
+def crack_with_known_plaintext(
+    ciphertext: str,
+    known_pairs: list[tuple[str, str]],
+    model: NgramModel,
+    cipher_type: str = "substitution",
+    config: MCMCConfig | None = None,
+    callback: ProgressCallback | None = None,
+    stop_event: Event | None = None,
+) -> MCMCResult:
+    """Crack with known plaintext-ciphertext alignments.
+
+    For substitution ciphers this constrains MCMC proposals so fixed mappings
+    remain unchanged while search proceeds over unfixed key positions.
+    """
+    if cipher_type != "substitution":
+        raise NotImplementedError(
+            "Known-plaintext constrained cracking is currently implemented "
+            "for substitution ciphers only"
+        )
+
+    fixed_mapping = _extract_fixed_mapping(known_pairs)
+    if config is None:
+        config = MCMCConfig(iterations=40_000, num_restarts=8, track_trajectory=False)
+
+    return run_mcmc(
+        ciphertext,
+        model,
+        config=config,
+        callback=callback,
+        stop_event=stop_event,
+        fixed_mapping=fixed_mapping,
+    )

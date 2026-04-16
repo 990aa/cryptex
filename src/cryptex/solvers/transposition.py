@@ -140,4 +140,3 @@ def crack_transposition(
                 result.detected_ncols = ncols
 
     return result
-

@@ -9,7 +9,6 @@ Provides:
 from __future__ import annotations
 
 import json
-import math
 import random
 import string
 import time
@@ -477,4 +476,3 @@ def plot_benchmark(
         ],
     }
     return _write_json_report(payload, save_path, "benchmark.json")
-

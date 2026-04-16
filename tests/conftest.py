@@ -47,4 +47,3 @@ def long_plaintext() -> str:
         "surrounding families that he is considered as the rightful property "
         "of some one or other of their daughters"
     )
-

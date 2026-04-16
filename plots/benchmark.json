@@ -1,6 +1,37 @@
 {
-  "artifact": "benchmark",
-  "status": "json_migration_placeholder",
-  "message": "Legacy graph output removed. Regenerate this report with `uv run cryptex benchmark`.",
-  "source_image": "benchmark.png"
+  "success_threshold": 0.2,
+  "entries": [
+    {
+      "method": "MCMC",
+      "avg_ser": 0.0,
+      "avg_score": -417.5816188312587,
+      "avg_time": 10.45238455136617,
+      "success_rate": 1.0,
+      "trials": 3
+    },
+    {
+      "method": "Genetic Algorithm",
+      "avg_ser": 0.0,
+      "avg_score": -417.5816188312587,
+      "avg_time": 8.510555505752563,
+      "success_rate": 1.0,
+      "trials": 3
+    },
+    {
+      "method": "Frequency Analysis",
+      "avg_ser": 0.6231205405808292,
+      "avg_score": -1605.9929611998098,
+      "avg_time": 0.00018056233723958334,
+      "success_rate": 0.0,
+      "trials": 3
+    },
+    {
+      "method": "Hill Climb + Freq Init",
+      "avg_ser": 0.2827868852459016,
+      "avg_score": -754.7247068276669,
+      "avg_time": 0.15137259165445963,
+      "success_rate": 0.6666666666666666,
+      "trials": 3
+    }
+  ]
 }

@@ -345,4 +345,3 @@ def print_result_box(
         )
     )
     console.print()
-

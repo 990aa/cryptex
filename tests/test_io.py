@@ -74,7 +74,6 @@ class TestGhostMappingProperty:
         mapping = ghost_map_text(text)
         restored = restore_ghost_text(mapping.core_text, mapping)
 
-        orig_letters = [c for c in text if c.isalpha()]
+        orig_letters = [c.lower() for c in text if c.isalpha()]
         rest_letters = [c for c in restored if c.isalpha()]
         assert orig_letters == [c.lower() for c in rest_letters]
-

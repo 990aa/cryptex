@@ -256,4 +256,3 @@ def frequency_comparison_plot(
         "decrypted": pt_freq.tolist(),
     }
     return _write_json_report(payload, save_path, "frequency_comparison.json")
-

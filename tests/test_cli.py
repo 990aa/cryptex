@@ -80,13 +80,15 @@ class TestBuildParser:
 
     def test_crack_output_format(self) -> None:
         parser = build_parser()
-        args = parser.parse_args([
-            "crack",
-            "--text",
-            "abc",
-            "--output-format",
-            "json",
-        ])
+        args = parser.parse_args(
+            [
+                "crack",
+                "--text",
+                "abc",
+                "--output-format",
+                "json",
+            ]
+        )
         assert args.output_format == "json"
 
     def test_crack_timeout_and_top_k(self) -> None:
@@ -210,4 +212,3 @@ class TestMainDispatch:
         """Unknown subcommand should cause SystemExit from argparse."""
         with pytest.raises(SystemExit):
             main(["nonexistent_command"])
-

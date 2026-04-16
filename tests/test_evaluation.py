@@ -120,7 +120,10 @@ class TestBenchmarkEntry:
 
 class TestPlotFunctions:
     def test_plot_phase_transition(self, tmp_path) -> None:
-        from cryptex.analysis.evaluation import PhaseTransitionResult, plot_phase_transition
+        from cryptex.analysis.evaluation import (
+            PhaseTransitionResult,
+            plot_phase_transition,
+        )
 
         r = PhaseTransitionResult()
         r.lengths = [50, 100, 200]
@@ -147,4 +150,3 @@ class TestPlotFunctions:
         path = plot_benchmark(entries, save_path=str(tmp_path / "bench.png"))
         assert path is not None
         assert (tmp_path / "bench.png").exists()
-

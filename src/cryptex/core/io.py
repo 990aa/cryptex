@@ -123,4 +123,3 @@ def likely_homophonic_cipher(text: str, threshold: int = 40) -> bool:
     """Heuristic: large effective alphabet often indicates homophonic cipher."""
     alphabet = discover_effective_alphabet(text)
     return len(alphabet) >= threshold
-

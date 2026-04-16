@@ -240,4 +240,3 @@ class TestEvaluationIntegration:
         result = run_mcmc(ct, model, config)
         ser = symbol_error_rate(MEDIUM_TEXT, result.best_plaintext)
         assert 0.0 <= ser <= 1.0
-

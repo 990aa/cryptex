@@ -134,4 +134,3 @@ class TestStripGutenberg:
         text = "just plain text"
         result = _strip_gutenberg(text)
         assert "plain" in result
-

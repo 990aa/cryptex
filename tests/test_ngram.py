@@ -139,4 +139,3 @@ class TestNgramModel:
     def test_single_char_score(self, trained_model) -> None:
         score = trained_model.score("a")
         assert isinstance(score, float)
-

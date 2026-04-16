@@ -277,7 +277,10 @@ def _apply_fixed_mapping_to_perm(
         current_plain = int(np.where(perm == target_cipher)[0][0])
         if current_plain == target_plain:
             continue
-        perm[target_plain], perm[current_plain] = perm[current_plain], perm[target_plain]
+        perm[target_plain], perm[current_plain] = (
+            perm[current_plain],
+            perm[target_plain],
+        )
 
 
 def _frequency_init_perm(ct_idx: np.ndarray, include_space: bool) -> np.ndarray:
@@ -387,9 +390,7 @@ def run_mcmc(
     fixed_plain_positions = {
         ord(plain) - ord("a") for plain in fixed_mapping_norm.values()
     }
-    free_plain_positions = [
-        i for i in range(26) if i not in fixed_plain_positions
-    ]
+    free_plain_positions = [i for i in range(26) if i not in fixed_plain_positions]
 
     if config.random_seed is not None:
         random.seed(config.random_seed)
@@ -684,4 +685,3 @@ def run_mcmc(
         result.swap_acceptance_rate = 0.0
 
     return result
-

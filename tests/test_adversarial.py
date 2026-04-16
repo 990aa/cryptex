@@ -152,4 +152,3 @@ class TestRunStressTests:
             trained_model, [case], callback=lambda name, r: calls.append(name)
         )
         assert len(calls) == 1
-

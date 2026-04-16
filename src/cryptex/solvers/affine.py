@@ -91,4 +91,3 @@ def crack_affine(
 
     result.tested_keys = trial
     return result
-

@@ -1,10 +1,10 @@
 # cryptex
 
-High-performance classical cryptanalysis toolkit (v0.5.0) for educational and research use.
+High-performance classical cryptanalysis toolkit for educational and research use.
 
 It provides:
 - Substitution cracking with adaptive MCMC, parallel tempering, and crossover jumps.
-- Alternative substitution solvers: HMM/EM and genetic algorithm.
+- Alternative substitution solvers: HMM/EM and genetic algorithm (research comparison).
 - Dedicated crackers for Vigenere, columnar transposition, and Playfair.
 - Kneser-Ney 5-gram language models (space and no-space variants).
 - Robust dirty-text handling (Unicode folding, punctuation preservation, case restoration).
@@ -46,8 +46,8 @@ uv run pytest -q
 | `uv run cryptex demo ...` | Encrypt sample text and crack live |
 | `uv run cryptex crack ...` | Crack custom ciphertext from text/file/stdin |
 | `uv run cryptex detect ...` | Predict cipher family and print feature diagnostics |
-| `uv run cryptex analyse ...` | MCMC convergence diagnostics + plots |
-| `uv run cryptex benchmark ...` | Compare MCMC, GA, frequency baseline, random restart |
+| `uv run cryptex analyse ...` | MCMC convergence diagnostics + JSON reports |
+| `uv run cryptex benchmark ...` | Compare MCMC, GA, frequency baseline, hill-climb baseline |
 | `uv run cryptex phase-transition ...` | Success rate vs ciphertext length |
 | `uv run cryptex stress-test` | Run adversarial robustness suite |
 | `uv run cryptex historical` | Run curated historical challenges |
@@ -111,7 +111,8 @@ For substitution/noisy-substitution routes, the CLI uses ghost mapping to:
 
 - `mcmc` (default)
 - `hmm`
-- `genetic`
+
+`genetic` remains available as a research comparator in demos and benchmarks.
 
 Examples:
 
@@ -194,7 +195,7 @@ uv run pytest -q
 Current verified state in this workspace:
 - Ruff: clean
 - Ty: clean
-- Pytest: 257 passed
+- Pytest: 261 passed
 
 ## Known Limits and Failure Modes
 
@@ -203,11 +204,7 @@ Current verified state in this workspace:
 - Non-alphabetic-only text fails cleanly with: `Error: no decipherable alphabetic content found.`
 - Missing files fail cleanly with: `Error reading file '<path>': ...`
 
-See full empirical run log in `docs/trials.md`.
-
 ## Additional Docs
 
-- `docs/IMPLEMENTATION.md` - architecture and module internals
-- `docs/TESTING.md` - test strategy and reproducible command set
-- `docs/trials.md` - custom input matrix with observed outputs and failures
+- `BENCHMARKS.md` - reproducible benchmark commands, expected ranges, and literature comparison notes
 

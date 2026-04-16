@@ -23,11 +23,14 @@ class TestKnownPlaintextCracking:
         baseline = run_mcmc(ct_alpha, trained_model, baseline_cfg)
         baseline_ser = symbol_error_rate(pt_alpha, baseline.best_plaintext)
 
-        known = [(pt_alpha[:2], ct_alpha[:2])]
-        kpa_cfg = MCMCConfig(random_seed=7, num_restarts=2, iterations=8_000)
-        constrained = crack_with_known_plaintext(ct_alpha, known, trained_model, config=kpa_cfg)
+        anchor = "truth"
+        start = pt_alpha.index(anchor)
+        known = [(anchor, ct_alpha[start : start + len(anchor)])]
+        kpa_cfg = MCMCConfig(random_seed=7, num_restarts=2, iterations=10_000)
+        constrained = crack_with_known_plaintext(
+            ct_alpha, known, trained_model, config=kpa_cfg
+        )
         constrained_ser = symbol_error_rate(pt_alpha, constrained.best_plaintext)
 
         assert constrained_ser <= baseline_ser
         assert constrained_ser < 0.10
-

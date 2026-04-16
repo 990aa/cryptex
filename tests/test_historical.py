@@ -91,4 +91,3 @@ class TestRunHistoricalChallenge:
         assert "name" in result
         assert "cipher_type" in result
         assert "decrypted" in result
-

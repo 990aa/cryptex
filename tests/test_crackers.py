@@ -185,4 +185,3 @@ class TestPlayfairCracker:
             "rotate_row",
             "rotate_col",
         )
-

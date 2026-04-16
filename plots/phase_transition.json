@@ -1,6 +1,43 @@
 {
-  "artifact": "phase_transition",
-  "status": "json_migration_placeholder",
-  "message": "Legacy graph output removed. Regenerate this report with `uv run cryptex phase-transition`.",
-  "source_image": "phase_transition.png"
+  "lengths": [
+    50,
+    75,
+    100,
+    125,
+    150,
+    200,
+    300,
+    500
+  ],
+  "success_rates": [
+    0.3333333333333333,
+    0.6666666666666666,
+    0.3333333333333333,
+    1.0,
+    0.6666666666666666,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "avg_ser": [
+    0.5164835164835165,
+    0.2568306010928962,
+    0.25345528455284555,
+    0.0,
+    0.19827586206896552,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "avg_times": [
+    8.999910831451416,
+    8.15307060877482,
+    8.119412581125895,
+    9.284680128097534,
+    8.90660047531128,
+    8.925459305445353,
+    9.214521328608194,
+    10.79717206954956
+  ],
+  "threshold_length": 75
 }

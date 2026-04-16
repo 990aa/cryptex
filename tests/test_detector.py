@@ -188,4 +188,3 @@ class TestDetectCipherType:
 
         result = detect_cipher_type("a")
         assert isinstance(result.predicted_type, str)
-

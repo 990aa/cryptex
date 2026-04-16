@@ -358,4 +358,3 @@ def crack_playfair(
         result.iterations_total += config.iterations
 
     return result
-

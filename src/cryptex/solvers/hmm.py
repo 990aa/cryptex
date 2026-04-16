@@ -311,4 +311,3 @@ def run_hmm(
     result.best_score = ll
 
     return result
-

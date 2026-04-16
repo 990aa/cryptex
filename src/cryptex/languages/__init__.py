@@ -323,4 +323,3 @@ def detect_language(text: str) -> tuple[str, dict[str, float]]:
 def get_available_languages() -> list[str]:
     """Return list of supported languages."""
     return ["english"] + list(LANGUAGE_CORPORA.keys())
-

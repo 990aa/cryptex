@@ -147,4 +147,3 @@ class TestGeneticSolver:
         config = GeneticConfig(population_size=5, generations=10)
         result = run_genetic(ct, trained_model, config)
         assert result.best_key != ""
-

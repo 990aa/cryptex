@@ -27,7 +27,7 @@ import sys
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Callable, Protocol
+from typing import Callable, Protocol, TypedDict
 
 # Ensure stdout can handle Unicode (Rich box-drawing chars) on Windows
 if sys.platform == "win32":
@@ -59,6 +59,12 @@ class _ScoredResult(Protocol):
     best_plaintext: str
 
 
+class CandidateEntry(TypedDict):
+    key: str
+    plaintext: str
+    score: float
+
+
 @dataclass
 class CrackOutput:
     cipher: str
@@ -68,7 +74,7 @@ class CrackOutput:
     score: float
     elapsed: float
     timed_out: bool = False
-    candidates: list[dict[str, object]] = field(default_factory=list)
+    candidates: list[CandidateEntry] = field(default_factory=list)
 
 
 def _parse_known_pairs(values: list[str] | None) -> list[tuple[str, str]]:
@@ -107,8 +113,8 @@ def _run_with_timeout(
                 ) from exc
 
 
-def _result_candidates(result: _ScoredResult, top_k: int) -> list[dict[str, object]]:
-    candidates: list[dict[str, object]] = []
+def _result_candidates(result: _ScoredResult, top_k: int) -> list[CandidateEntry]:
+    candidates: list[CandidateEntry] = []
     if hasattr(result, "top_candidates"):
         top_candidates = getattr(result, "top_candidates")
         if isinstance(top_candidates, list):
@@ -374,7 +380,11 @@ def _crack_auto(
 ) -> None:  # noqa: ANN001
     """Automatically detect cipher type and run competitive solvers in parallel."""
     from cryptex.core.detector import detect_cipher_type
-    from cryptex.core.io import ghost_map_text, likely_homophonic_cipher, restore_ghost_text
+    from cryptex.core.io import (
+        ghost_map_text,
+        likely_homophonic_cipher,
+        restore_ghost_text,
+    )
 
     detected = detect_cipher_type(ciphertext_raw.lower())
     ghost = ghost_map_text(ciphertext_raw)
@@ -629,6 +639,7 @@ def _crack_noninteractive(
 
     cipher_label = {
         "substitution": "Simple Substitution",
+        "noisy-substitution": "Simple Substitution",
         "vigenere": "Vigenere",
         "transposition": "Columnar Transposition",
         "playfair": "Playfair",
@@ -641,7 +652,9 @@ def _crack_noninteractive(
     def _runner(stop_event: threading.Event | None):
         if known_pairs:
             if cipher_name not in ("substitution", "simple", "sub"):
-                raise ValueError("Known-plaintext pairs currently support substitution only")
+                raise ValueError(
+                    "Known-plaintext pairs currently support substitution only"
+                )
             cfg = MCMCConfig(iterations=40_000, num_restarts=8, track_trajectory=False)
             return crack_with_known_plaintext(
                 ciphertext,
@@ -664,6 +677,23 @@ def _crack_noninteractive(
                 )
             if method == "genetic":
                 return _run_substitution_genetic(
+                    ciphertext,
+                    model,
+                    config=None,
+                    callback=None,
+                    stop_event=stop_event,
+                )
+            return _run_substitution_mcmc(
+                ciphertext,
+                model,
+                config=None,
+                callback=None,
+                stop_event=stop_event,
+            )
+
+        if cipher_name.startswith("noisy"):
+            if method == "hmm":
+                return _run_substitution_hmm(
                     ciphertext,
                     model,
                     config=None,
@@ -942,7 +972,9 @@ def _crack_substitution_mcmc(
     config = MCMCConfig()
     display = MCMCDisplay(config.num_restarts, config.iterations, ciphertext)
 
-    with Live(display.render(), console=interactive_console, refresh_per_second=8) as live:
+    with Live(
+        display.render(), console=interactive_console, refresh_per_second=8
+    ) as live:
 
         def cb(chain_idx, iteration, cur_key, cur_pt, cur_score, best_score, temp):
             display.callback(
@@ -981,7 +1013,9 @@ def _crack_substitution_hmm(
     config = HMMConfig()
     display = HMMDisplay()
 
-    with Live(display.render(), console=interactive_console, refresh_per_second=4) as live:
+    with Live(
+        display.render(), console=interactive_console, refresh_per_second=4
+    ) as live:
 
         def cb(iteration, plaintext, ll):
             display.callback(iteration, plaintext, ll)
@@ -1013,7 +1047,9 @@ def _crack_vigenere(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     config = VigenereConfig()
     display = GenericDisplay("Vigenere Cracker")
 
-    with Live(display.render(), console=interactive_console, refresh_per_second=4) as live:
+    with Live(
+        display.render(), console=interactive_console, refresh_per_second=4
+    ) as live:
 
         def cb(key, pt, score):
             display.update(f"Key={key}  score={score:,.1f}", pt, score)
@@ -1042,7 +1078,9 @@ def _crack_transposition(ciphertext: str, model, t0: float) -> None:  # noqa: AN
     config = TranspositionConfig()
     display = GenericDisplay("Transposition Cracker")
 
-    with Live(display.render(), console=interactive_console, refresh_per_second=4) as live:
+    with Live(
+        display.render(), console=interactive_console, refresh_per_second=4
+    ) as live:
 
         def cb(chain, it, pt, score, temp):
             display.update(
@@ -1078,7 +1116,9 @@ def _crack_playfair(
     config = PlayfairConfig()
     display = GenericDisplay("Playfair Cracker")
 
-    with Live(display.render(), console=interactive_console, refresh_per_second=4) as live:
+    with Live(
+        display.render(), console=interactive_console, refresh_per_second=4
+    ) as live:
 
         def cb(chain, it, pt, score, temp):
             display.update(
@@ -1112,7 +1152,9 @@ def _crack_affine(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     config = AffineConfig()
     display = GenericDisplay("Affine Solver")
 
-    with Live(display.render(), console=interactive_console, refresh_per_second=4) as live:
+    with Live(
+        display.render(), console=interactive_console, refresh_per_second=4
+    ) as live:
 
         def cb(a, b, pt, score):
             display.update(f"a={a}, b={b}  score={score:,.1f}", pt, score)
@@ -1138,7 +1180,9 @@ def _crack_railfence(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     config = RailFenceConfig()
     display = GenericDisplay("Rail Fence Solver")
 
-    with Live(display.render(), console=interactive_console, refresh_per_second=4) as live:
+    with Live(
+        display.render(), console=interactive_console, refresh_per_second=4
+    ) as live:
 
         def cb(rails, pt, score):
             display.update(f"rails={rails}  score={score:,.1f}", pt, score)
@@ -1172,7 +1216,9 @@ def _crack_substitution_genetic(
     config = GeneticConfig()
     display = GenericDisplay("Genetic Algorithm")
 
-    with Live(display.render(), console=interactive_console, refresh_per_second=4) as live:
+    with Live(
+        display.render(), console=interactive_console, refresh_per_second=4
+    ) as live:
 
         def cb(gen: int, key: str, pt: str, score: float) -> None:
             display.update(f"Gen {gen}  score={score:,.1f}", pt, score)
@@ -1239,7 +1285,9 @@ def cmd_analyse(args: argparse.Namespace) -> None:
     display = MCMCDisplay(config.num_restarts, config.iterations, ciphertext)
     t0 = time.time()
 
-    with Live(display.render(), console=interactive_console, refresh_per_second=8) as live:
+    with Live(
+        display.render(), console=interactive_console, refresh_per_second=8
+    ) as live:
 
         def cb(chain_idx, iteration, cur_key, cur_pt, cur_score, best_score, temp):
             display.callback(
@@ -1813,4 +1861,3 @@ def main(argv: list[str] | None = None) -> None:
 
 if __name__ == "__main__":
     main()
-

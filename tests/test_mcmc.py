@@ -186,4 +186,3 @@ class TestMCMCSolver:
 
         assert r1.best_score == r2.best_score
         assert r1.best_key == r2.best_key
-

@@ -245,4 +245,3 @@ def run_historical_challenge(
         callback(result)
 
     return result
-
