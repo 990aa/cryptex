@@ -325,17 +325,6 @@ def crack_vigenere(
     length_scores.sort(key=lambda x: x[1], reverse=True)
 
     top_n = min(max(config.top_key_lengths, 1), len(length_scores))
-    for rank, (kl, _combined_score) in enumerate(length_scores[:top_n], start=1):
-        shifts = [
-            _solve_caesar_ngram(_get_subseq(letters, kl, pos), model)
-            for pos in range(kl)
-        ]
-        shifts = _refine_to_word_key(shifts, COMMON_KEY_WORDS)
-
-        plaintext = _apply_vigenere_key(ciphertext, shifts)
-        pt_idx = text_to_indices(plaintext, include_space=model.include_space)
-        score = model.score_adaptive(pt_idx)
-    top_n = min(max(config.top_key_lengths, 1), len(length_scores))
     preferred = {kl for kl, _ in length_scores[:top_n]}
     preferred.update(detect_key_length(letters, max_len=max_len, top_n=min(6, max_len)))
     preferred.update(kasiski_key_lengths(letters, max_len=max_len))
@@ -371,3 +360,5 @@ def crack_vigenere(
             result.best_key = key
             result.best_plaintext = plaintext
             result.detected_key_length = kl
+
+    return result
