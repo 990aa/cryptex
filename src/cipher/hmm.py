@@ -21,9 +21,9 @@ import numpy as np
 from cipher.ngram import NgramModel
 
 
-# ------------------------------------------------------------------
+
 # Config
-# ------------------------------------------------------------------
+
 
 
 @dataclass
@@ -53,9 +53,9 @@ class HMMResult:
 HMMCallback = Callable[[int, str, float], None]
 
 
-# ------------------------------------------------------------------
+
 # Helpers
-# ------------------------------------------------------------------
+
 
 
 def _logsumexp(a: np.ndarray, axis: int | None = None) -> np.ndarray:
@@ -77,9 +77,9 @@ def _normalise_log(log_probs: np.ndarray, axis: int = -1) -> np.ndarray:
     return log_probs - lse
 
 
-# ------------------------------------------------------------------
+
 # Core solver
-# ------------------------------------------------------------------
+
 
 
 def run_hmm(
@@ -127,9 +127,9 @@ def run_hmm(
         else:
             obs[t] = ord(ch) - ord("a") + (1 if include_space else 0)
 
-    # ------------------------------------------------------------------
+    
     # Initialise HMM parameters
-    # ------------------------------------------------------------------
+    
 
     # Transition matrix (log): use bigram log-probs from the language model
     # log_trans[i, j] = log P(hidden_j | hidden_i)

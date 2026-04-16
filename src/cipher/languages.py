@@ -16,9 +16,9 @@ import numpy as np
 
 from cipher.ngram import DATA_DIR, NgramModel
 
-# ------------------------------------------------------------------
+
 # Corpus URLs for each language (public domain, Project Gutenberg)
-# ------------------------------------------------------------------
+
 
 LANGUAGE_CORPORA: dict[str, list[tuple[str, str]]] = {
     "french": [
@@ -160,9 +160,9 @@ def get_language_model(
     return model
 
 
-# ------------------------------------------------------------------
+
 # Language Detection
-# ------------------------------------------------------------------
+
 
 
 # Approximate letter frequency profiles for quick detection

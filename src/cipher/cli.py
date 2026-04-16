@@ -47,9 +47,9 @@ from rich.text import Text
 console = Console(force_terminal=True)
 
 
-# ------------------------------------------------------------------
+
 # Sub-commands
-# ------------------------------------------------------------------
+
 
 
 def cmd_train(args: argparse.Namespace) -> None:
@@ -312,9 +312,9 @@ def _crack_auto(ciphertext_raw: str, model) -> None:  # noqa: ANN001
     )
 
 
-# ------------------------------------------------------------------
+
 # Unified crack dispatcher
-# ------------------------------------------------------------------
+
 
 
 def _crack(
@@ -389,9 +389,9 @@ def _crack(
         sys.exit(1)
 
 
-# ------------------------------------------------------------------
+
 # Substitution — MCMC
-# ------------------------------------------------------------------
+
 
 
 def _crack_substitution_mcmc(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
@@ -422,9 +422,9 @@ def _crack_substitution_mcmc(ciphertext: str, model, t0: float) -> None:  # noqa
     )
 
 
-# ------------------------------------------------------------------
+
 # Substitution — HMM
-# ------------------------------------------------------------------
+
 
 
 def _crack_substitution_hmm(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
@@ -453,9 +453,9 @@ def _crack_substitution_hmm(ciphertext: str, model, t0: float) -> None:  # noqa:
     )
 
 
-# ------------------------------------------------------------------
+
 # Vigenère
-# ------------------------------------------------------------------
+
 
 
 def _crack_vigenere(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
@@ -484,9 +484,9 @@ def _crack_vigenere(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     )
 
 
-# ------------------------------------------------------------------
+
 # Columnar Transposition
-# ------------------------------------------------------------------
+
 
 
 def _crack_transposition(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
@@ -517,9 +517,9 @@ def _crack_transposition(ciphertext: str, model, t0: float) -> None:  # noqa: AN
     )
 
 
-# ------------------------------------------------------------------
+
 # Playfair
-# ------------------------------------------------------------------
+
 
 
 def _crack_playfair(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
@@ -554,9 +554,9 @@ def _crack_playfair(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     )
 
 
-# ------------------------------------------------------------------
+
 # Substitution — Genetic Algorithm
-# ------------------------------------------------------------------
+
 
 
 def _crack_substitution_genetic(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
@@ -585,9 +585,9 @@ def _crack_substitution_genetic(ciphertext: str, model, t0: float) -> None:  # n
     )
 
 
-# ------------------------------------------------------------------
+
 # Phase 2: Convergence analysis
-# ------------------------------------------------------------------
+
 
 
 def cmd_analyse(args: argparse.Namespace) -> None:
@@ -700,9 +700,9 @@ def cmd_analyse(args: argparse.Namespace) -> None:
     )
 
 
-# ------------------------------------------------------------------
+
 # Phase 2: Cipher type detection
-# ------------------------------------------------------------------
+
 
 
 def cmd_detect(args: argparse.Namespace) -> None:
@@ -751,9 +751,9 @@ def cmd_detect(args: argparse.Namespace) -> None:
     console.print(f"  Length: {f.length}")
 
 
-# ------------------------------------------------------------------
+
 # Phase 2: Benchmark
-# ------------------------------------------------------------------
+
 
 
 def cmd_benchmark(args: argparse.Namespace) -> None:
@@ -805,9 +805,9 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
         console.print(f"\n[green]Saved benchmark plot: {path}")
 
 
-# ------------------------------------------------------------------
+
 # Phase 2: Phase transition
-# ------------------------------------------------------------------
+
 
 
 def cmd_phase_transition(args: argparse.Namespace) -> None:
@@ -862,9 +862,9 @@ def cmd_phase_transition(args: argparse.Namespace) -> None:
         console.print(f"\n[green]Saved phase transition plot: {path}")
 
 
-# ------------------------------------------------------------------
+
 # Phase 2: Adversarial stress tests
-# ------------------------------------------------------------------
+
 
 
 def cmd_stress_test(_args: argparse.Namespace) -> None:
@@ -911,9 +911,9 @@ def cmd_stress_test(_args: argparse.Namespace) -> None:
     console.print(table)
 
 
-# ------------------------------------------------------------------
+
 # Phase 2: Historical ciphers
-# ------------------------------------------------------------------
+
 
 
 def cmd_historical(_args: argparse.Namespace) -> None:
@@ -944,9 +944,9 @@ def cmd_historical(_args: argparse.Namespace) -> None:
         console.print()
 
 
-# ------------------------------------------------------------------
+
 # Phase 2: Multi-language support
-# ------------------------------------------------------------------
+
 
 
 def cmd_language(args: argparse.Namespace) -> None:
@@ -974,9 +974,9 @@ def cmd_language(args: argparse.Namespace) -> None:
             console.print(f"  {lang}")
 
 
-# ------------------------------------------------------------------
+
 # Argument parser
-# ------------------------------------------------------------------
+
 
 
 def build_parser() -> argparse.ArgumentParser:

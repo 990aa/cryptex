@@ -45,9 +45,9 @@ class DetectionResult:
     reasoning: str = ""
 
 
-# ------------------------------------------------------------------
+
 # Feature extraction
-# ------------------------------------------------------------------
+
 
 
 ENGLISH_FREQ = np.array(
@@ -181,9 +181,9 @@ def extract_features(ciphertext: str) -> CipherFeatures:
     )
 
 
-# ------------------------------------------------------------------
+
 # Rule-based classifier
-# ------------------------------------------------------------------
+
 
 
 def detect_cipher_type(ciphertext: str) -> DetectionResult:

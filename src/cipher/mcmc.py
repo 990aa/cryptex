@@ -17,9 +17,9 @@ import numpy as np
 from cipher.ngram import NgramModel, text_to_indices
 
 
-# ------------------------------------------------------------------
+
 # Configuration
-# ------------------------------------------------------------------
+
 
 
 @dataclass
@@ -84,9 +84,9 @@ class MCMCConfig:
     """Optional deterministic seed for repeatable solver runs."""
 
 
-# ------------------------------------------------------------------
+
 # Result type
-# ------------------------------------------------------------------
+
 
 
 @dataclass
@@ -104,16 +104,16 @@ class MCMCResult:
     swap_acceptance_rate: float = 0.0
 
 
-# ------------------------------------------------------------------
+
 # Callback signature
-# ------------------------------------------------------------------
+
 # callback(chain_idx, iteration, current_key, current_plaintext, current_score, best_score, temperature)
 ProgressCallback = Callable[[int, int, str, str, float, float, float], None]
 
 
-# ------------------------------------------------------------------
+
 # Core solver
-# ------------------------------------------------------------------
+
 
 
 def _apply_key(ciphertext: str, key: str) -> str:
