@@ -343,142 +343,184 @@ def cmd_crack(args: argparse.Namespace) -> None:
         )
         return
 
-    output = _crack_noninteractive(
-        ciphertext,
-        args.cipher,
-        args.method,
-        model,
-        timeout=args.timeout,
-        top_k=args.top_k,
-        postprocess_plaintext=postprocess_plaintext,
-        known_pairs=known_pairs,
-        language=args.language,
-    )
+    try:
+        output = _crack_noninteractive(
+            ciphertext,
+            args.cipher,
+            args.method,
+            model,
+            timeout=args.timeout,
+            top_k=args.top_k,
+            postprocess_plaintext=postprocess_plaintext,
+            known_pairs=known_pairs,
+            language=args.language,
+        )
+    except TimeoutError as exc:
+        console.print(f"[red]Timeout error:[/red] {exc}")
+        sys.exit(1)
     _emit_output(output, args.output_format, top_k=args.top_k)
 
 
 # Auto orchestration
 
 
-def _crack_auto(ciphertext_raw: str, model) -> None:  # noqa: ANN001
-    """Automatically detect cipher type and run one or more candidate solvers."""
-    from cryptex.detector import detect_cipher_type
-    from cryptex.display import print_result_box
-    from cryptex.io import ghost_map_text, likely_homophonic_cipher, restore_ghost_text
-    from cryptex.mcmc import MCMCConfig
+def _crack_auto(
+    ciphertext_raw: str,
+    model,
+    output_format: str = "terminal",
+    timeout: float | None = None,
+    top_k: int = 1,
+    language: str = "english",
+) -> None:  # noqa: ANN001
+    """Automatically detect cipher type and run competitive solvers in parallel."""
+    from cryptex.core.detector import detect_cipher_type
+    from cryptex.core.io import ghost_map_text, likely_homophonic_cipher, restore_ghost_text
 
     detected = detect_cipher_type(ciphertext_raw.lower())
-    console.print(
-        f"[bold cyan]Auto-detect:[/bold cyan] {detected.predicted_type} "
-        f"({detected.confidence:.1%} confidence)"
-    )
+    ghost = ghost_map_text(ciphertext_raw)
 
-    if likely_homophonic_cipher(ciphertext_raw):
+    if output_format == "terminal":
         console.print(
-            "[yellow]Warning:[/yellow] symbol inventory suggests a possible "
-            "homophonic cipher; falling back to available classical solvers."
+            f"[bold cyan]Auto-detect:[/bold cyan] {detected.predicted_type} "
+            f"({detected.confidence:.1%} confidence)"
         )
+        if likely_homophonic_cipher(ciphertext_raw):
+            console.print(
+                "[yellow]Warning:[/yellow] symbol inventory suggests a possible "
+                "homophonic cipher; falling back to available classical solvers."
+            )
+
+    candidate_specs: list[tuple[str, str, str, str, Callable[[str], str] | None]] = []
+
+    def add_candidate(
+        name: str,
+        cipher: str,
+        method: str,
+        text: str,
+        postprocess: Callable[[str], str] | None = None,
+    ) -> None:
+        if not text.strip():
+            return
+        candidate_specs.append((name, cipher, method, text, postprocess))
 
     if detected.confidence >= 0.80:
-        cipher_name = detected.predicted_type
-        if cipher_name == "substitution":
-            ghost = ghost_map_text(ciphertext_raw)
-            core = ghost.core_text.lower()
-            if not core:
-                console.print("[red]Error: no decipherable alphabetic content found.")
-                return
-            _crack(
-                core,
+        predicted = detected.predicted_type
+        if predicted == "substitution" and ghost.core_text:
+            add_candidate(
+                "substitution-mcmc",
                 "substitution",
                 "mcmc",
-                model,
-                postprocess_plaintext=lambda pt, g=ghost: restore_ghost_text(pt, g),
+                ghost.core_text.lower(),
+                lambda pt, g=ghost: restore_ghost_text(pt, g),
             )
-            return
+        elif predicted in {
+            "vigenere",
+            "transposition",
+            "playfair",
+            "affine",
+            "railfence",
+        }:
+            add_candidate(predicted, predicted, "mcmc", ciphertext_raw.lower(), None)
 
-        _crack(ciphertext_raw.lower(), cipher_name, "mcmc", model)
-        return
-
-    console.print(
-        "[bold cyan]Low confidence:[/bold cyan] running competitive solvers and selecting the best score."
-    )
-
-    candidates: list[tuple[str, _ScoredResult, str, str, float]] = []
-
-    ghost = ghost_map_text(ciphertext_raw)
-    if ghost.core_text:
-        t0 = time.time()
-        sub_result = _run_substitution_mcmc(
-            ghost.core_text.lower(),
-            model,
-            config=MCMCConfig(
-                iterations=25_000,
-                num_restarts=4,
-                track_trajectory=False,
-                callback_interval=5000,
-            ),
-            callback=None,
-        )
-        sub_result.best_plaintext = restore_ghost_text(sub_result.best_plaintext, ghost)
-        candidates.append(
-            (
-                "Simple Substitution",
-                sub_result,
-                "MCMC (Adaptive + Tempering)",
-                sub_result.best_key,
-                time.time() - t0,
+        # Parallelized high-confidence path: include a substitution fallback.
+        if predicted != "substitution" and ghost.core_text:
+            add_candidate(
+                "fallback-substitution",
+                "substitution",
+                "mcmc",
+                ghost.core_text.lower(),
+                lambda pt, g=ghost: restore_ghost_text(pt, g),
             )
-        )
-
-    if ghost.core_text:
-        t0 = time.time()
-        hmm_result = _run_substitution_hmm(ghost.core_text.lower(), model)
-        hmm_result.best_plaintext = restore_ghost_text(hmm_result.best_plaintext, ghost)
-        candidates.append(
-            (
-                "Simple Substitution",
-                hmm_result,
-                "HMM/EM",
-                hmm_result.best_key,
-                time.time() - t0,
+    else:
+        if output_format == "terminal":
+            console.print(
+                "[bold cyan]Low confidence:[/bold cyan] running competitive solvers in parallel."
             )
-        )
 
-    t0 = time.time()
-    vig_result = _run_vigenere(ciphertext_raw.lower(), model)
-    candidates.append(
-        (
-            "Vigenere",
-            vig_result,
-            "IoC + Frequency Analysis",
-            vig_result.best_key,
-            time.time() - t0,
-        )
-    )
+        if ghost.core_text:
+            add_candidate(
+                "substitution-mcmc",
+                "substitution",
+                "mcmc",
+                ghost.core_text.lower(),
+                lambda pt, g=ghost: restore_ghost_text(pt, g),
+            )
+            add_candidate(
+                "substitution-hmm",
+                "substitution",
+                "hmm",
+                ghost.core_text.lower(),
+                lambda pt, g=ghost: restore_ghost_text(pt, g),
+            )
 
-    if not candidates:
+        add_candidate("vigenere", "vigenere", "mcmc", ciphertext_raw.lower(), None)
+
+    if not candidate_specs:
         console.print("[red]No viable candidates produced a result.")
         return
 
-    winner_name, winner_result, winner_method, winner_key, elapsed = max(
-        candidates,
-        key=lambda entry: float(entry[1].best_score),
+    dedup: dict[str, tuple[str, str, str, str, Callable[[str], str] | None]] = {}
+    for spec in candidate_specs:
+        dedup[spec[0]] = spec
+    candidate_specs = list(dedup.values())
+
+    outputs: list[CrackOutput] = []
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(candidate_specs)) as ex:
+        future_to_name: dict[concurrent.futures.Future[CrackOutput], str] = {}
+        for name, cipher, method, text, postprocess in candidate_specs:
+            future = ex.submit(
+                _crack_noninteractive,
+                text,
+                cipher,
+                method,
+                model,
+                timeout,
+                max(1, top_k),
+                postprocess,
+                None,
+                language,
+            )
+            future_to_name[future] = name
+
+        done, _ = concurrent.futures.wait(future_to_name.keys())
+
+        for future in done:
+            try:
+                outputs.append(future.result())
+            except Exception as exc:  # pragma: no cover - defensive
+                if output_format == "terminal":
+                    console.print(f"[yellow]Candidate failed:[/yellow] {exc}")
+
+    if not outputs:
+        console.print("[red]No candidate completed successfully.")
+        return
+
+    winner = max(outputs, key=lambda item: float(item.score))
+    winner.timed_out = winner.timed_out or any(out.timed_out for out in outputs)
+    winner.candidates = sorted(
+        [
+            {
+                "cipher": out.cipher,
+                "method": out.method,
+                "key": out.key,
+                "score": out.score,
+                "plaintext": out.plaintext,
+            }
+            for out in outputs
+        ],
+        key=lambda item: float(item["score"]),
+        reverse=True,
     )
 
-    console.print("\n[bold green]Auto-selection complete.[/bold green]")
-    for label, candidate, method, _key, runtime in candidates:
-        console.print(
-            f"  {label:<22} {method:<28} score={candidate.best_score:,.2f}  time={runtime:.1f}s"
-        )
+    if output_format == "terminal":
+        console.print("\n[bold green]Auto-selection complete.[/bold green]")
+        for out in outputs:
+            console.print(
+                f"  {out.cipher:<22} {out.method:<30} score={out.score:,.2f}  time={out.elapsed:.1f}s"
+            )
 
-    print_result_box(
-        winner_name,
-        winner_method,
-        str(winner_key),
-        winner_result.best_plaintext,
-        winner_result.best_score,
-        elapsed,
-    )
+    _emit_output(winner, output_format=output_format, top_k=top_k)
 
 
 # Unified crack dispatcher
@@ -554,6 +596,161 @@ def _crack(
     else:
         console.print(f"[red]Unknown cipher type: {cipher_name}")
         sys.exit(1)
+
+
+def _crack_noninteractive(
+    ciphertext: str,
+    cipher_name: str,
+    method: str,
+    model,
+    timeout: float | None,
+    top_k: int,
+    postprocess_plaintext: Callable[[str], str] | None = None,
+    known_pairs: list[tuple[str, str]] | None = None,
+    language: str = "english",
+) -> CrackOutput:  # noqa: ANN001
+    from cryptex.mcmc import MCMCConfig
+    from cryptex.solvers.kpa import crack_with_known_plaintext
+
+    cipher_name = cipher_name.lower().strip()
+    method = method.lower().strip()
+    known_pairs = known_pairs or []
+
+    method_label = {
+        ("substitution", "mcmc"): "MCMC (Adaptive + Tempering)",
+        ("substitution", "hmm"): "HMM/EM",
+        ("substitution", "genetic"): "Genetic Algorithm",
+        ("vigenere", "mcmc"): "IoC + Frequency Analysis",
+        ("transposition", "mcmc"): "MCMC",
+        ("playfair", "mcmc"): "Population Hill-Climb",
+        ("affine", "mcmc"): "Brute Force + Adaptive Scoring",
+        ("railfence", "mcmc"): "Rail Sweep + Adaptive Scoring",
+    }
+
+    cipher_label = {
+        "substitution": "Simple Substitution",
+        "vigenere": "Vigenere",
+        "transposition": "Columnar Transposition",
+        "playfair": "Playfair",
+        "affine": "Affine",
+        "railfence": "Rail Fence",
+    }.get(cipher_name, cipher_name)
+
+    start = time.time()
+
+    def _runner(stop_event: threading.Event | None):
+        if known_pairs:
+            if cipher_name not in ("substitution", "simple", "sub"):
+                raise ValueError("Known-plaintext pairs currently support substitution only")
+            cfg = MCMCConfig(iterations=40_000, num_restarts=8, track_trajectory=False)
+            return crack_with_known_plaintext(
+                ciphertext,
+                known_pairs,
+                model,
+                cipher_type="substitution",
+                config=cfg,
+                callback=None,
+                stop_event=stop_event,
+            )
+
+        if cipher_name in ("substitution", "simple", "sub"):
+            if method == "hmm":
+                return _run_substitution_hmm(
+                    ciphertext,
+                    model,
+                    config=None,
+                    callback=None,
+                    stop_event=stop_event,
+                )
+            if method == "genetic":
+                return _run_substitution_genetic(
+                    ciphertext,
+                    model,
+                    config=None,
+                    callback=None,
+                    stop_event=stop_event,
+                )
+            return _run_substitution_mcmc(
+                ciphertext,
+                model,
+                config=None,
+                callback=None,
+                stop_event=stop_event,
+            )
+
+        if cipher_name in ("vigenere", "vig"):
+            return _run_vigenere(
+                ciphertext,
+                model,
+                config=None,
+                callback=None,
+                stop_event=stop_event,
+            )
+
+        if cipher_name in ("transposition", "columnar", "trans"):
+            return _run_transposition(
+                ciphertext,
+                model,
+                config=None,
+                callback=None,
+                stop_event=stop_event,
+            )
+
+        if cipher_name in ("playfair", "play"):
+            return _run_playfair(
+                ciphertext,
+                model,
+                config=None,
+                callback=None,
+                stop_event=stop_event,
+                language=language,
+            )
+
+        if cipher_name in ("affine",):
+            return _run_affine(
+                ciphertext,
+                model,
+                config=None,
+                callback=None,
+                stop_event=stop_event,
+            )
+
+        if cipher_name in ("railfence", "rail-fence", "rail"):
+            return _run_railfence(
+                ciphertext,
+                model,
+                config=None,
+                callback=None,
+                stop_event=stop_event,
+            )
+
+        raise ValueError(f"Unknown cipher type: {cipher_name}")
+
+    result, timed_out = _run_with_timeout(_runner, timeout)
+
+    if postprocess_plaintext is not None:
+        result.best_plaintext = postprocess_plaintext(result.best_plaintext)
+
+    candidates = _result_candidates(result, top_k)
+    if postprocess_plaintext is not None:
+        for cand in candidates:
+            cand["plaintext"] = postprocess_plaintext(str(cand["plaintext"]))
+
+    if known_pairs:
+        selected_method = "MCMC (Known-Plaintext Constrained)"
+    else:
+        selected_method = method_label.get((cipher_name, method), method.upper())
+
+    return CrackOutput(
+        cipher=cipher_label,
+        method=selected_method,
+        key=str(getattr(result, "best_key", "")),
+        plaintext=str(getattr(result, "best_plaintext", "")),
+        score=float(getattr(result, "best_score", float("-inf"))),
+        elapsed=time.time() - start,
+        timed_out=timed_out,
+        candidates=candidates,
+    )
 
 
 # Solver runners (non-interactive)
@@ -869,7 +1066,12 @@ def _crack_transposition(ciphertext: str, model, t0: float) -> None:  # noqa: AN
 # Playfair
 
 
-def _crack_playfair(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
+def _crack_playfair(
+    ciphertext: str,
+    model,
+    t0: float,
+    language: str = "english",
+) -> None:  # noqa: ANN001
     from cryptex.display import GenericDisplay, print_result_box
     from cryptex.playfair_cracker import PlayfairConfig
 
@@ -884,7 +1086,13 @@ def _crack_playfair(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
             )
             live.update(display.render())
 
-        result = _run_playfair(ciphertext, model, config=config, callback=cb)
+        result = _run_playfair(
+            ciphertext,
+            model,
+            config=config,
+            callback=cb,
+            language=language,
+        )
 
     elapsed = time.time() - t0
     print_result_box(
@@ -1159,7 +1367,7 @@ def cmd_detect(args: argparse.Namespace) -> None:
 
 
 def cmd_benchmark(args: argparse.Namespace) -> None:
-    """Benchmark MCMC vs GA vs frequency analysis vs random restarts."""
+    """Benchmark MCMC vs GA vs frequency analysis vs hill-climb baseline."""
     from rich.table import Table
 
     from cryptex.corpus import download_corpus
@@ -1171,7 +1379,7 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
     console.print(f"  Text length: {args.length}, Trials: {args.trials}")
     console.print(f"  Success threshold (SER): <= {args.success_threshold:.1%}")
     console.print(
-        "  Methods: MCMC, Genetic Algorithm, Frequency Analysis, Random Restarts\n"
+        "  Methods: MCMC, Genetic Algorithm, Frequency Analysis, Hill Climb + Freq Init\n"
     )
 
     corpus = download_corpus()
@@ -1468,8 +1676,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--method",
         "-m",
         default="mcmc",
-        choices=["mcmc", "hmm", "genetic"],
-        help="Solving method (default: mcmc)",
+        choices=["mcmc", "hmm"],
+        help="Primary solving method (default: mcmc)",
     )
     p_crack.add_argument(
         "--auto",
@@ -1478,6 +1686,37 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_crack.add_argument("--text", "-t", type=str, help="Ciphertext string")
     p_crack.add_argument("--file", "-f", type=str, help="Read ciphertext from file")
+    p_crack.add_argument(
+        "--language",
+        "-l",
+        choices=["english", "french", "german", "spanish"],
+        default="english",
+        help="Language model used for scoring",
+    )
+    p_crack.add_argument(
+        "--output-format",
+        choices=["terminal", "json", "plain"],
+        default="terminal",
+        help="Output rendering mode",
+    )
+    p_crack.add_argument(
+        "--timeout",
+        type=float,
+        default=None,
+        help="Maximum wall-clock time in seconds",
+    )
+    p_crack.add_argument(
+        "--top-k",
+        type=int,
+        default=1,
+        help="Show top K candidate decryptions",
+    )
+    p_crack.add_argument(
+        "--known-pair",
+        action="append",
+        default=[],
+        help="Known aligned fragment as '<plaintext>:<ciphertext>' (repeatable)",
+    )
 
     p_analyse = sub.add_parser(
         "analyse", help="Run MCMC with convergence analysis and diagnostic reports"
@@ -1507,7 +1746,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Success threshold on SER (default: 0.20)",
     )
     p_bench.add_argument(
-        "--output", "-o", type=str, default=".", help="Output directory for plots"
+        "--output", "-o", type=str, default=".", help="Output directory for reports"
     )
 
     p_phase = sub.add_parser(
@@ -1517,7 +1756,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--trials", type=int, default=3, help="Trials per length (default: 3)"
     )
     p_phase.add_argument(
-        "--output", "-o", type=str, default=".", help="Output directory for plots"
+        "--output", "-o", type=str, default=".", help="Output directory for reports"
     )
 
     sub.add_parser("stress-test", help="Run adversarial stress tests")

@@ -88,11 +88,13 @@ class TestFrequencyAnalysisBaseline:
         assert len(result) == len(ct)
 
 
-class TestRandomRestartBaseline:
+class TestHillclimbBaseline:
     def test_returns_string(self, trained_model) -> None:
-        from cryptex.evaluation import _random_restart_baseline
+        from cryptex.evaluation import _hillclimb_frequency_baseline
 
-        result = _random_restart_baseline("hello world", trained_model, n_restarts=5)
+        result = _hillclimb_frequency_baseline(
+            "hello world", trained_model, iterations=50
+        )
         assert isinstance(result, str)
         assert len(result) > 0
 

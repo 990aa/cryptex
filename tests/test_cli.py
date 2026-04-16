@@ -73,6 +73,45 @@ class TestBuildParser:
         assert args.cipher == "vigenere"
         assert args.method == "hmm"
 
+    def test_crack_language_flag(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(["crack", "--text", "abc", "--language", "french"])
+        assert args.language == "french"
+
+    def test_crack_output_format(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args([
+            "crack",
+            "--text",
+            "abc",
+            "--output-format",
+            "json",
+        ])
+        assert args.output_format == "json"
+
+    def test_crack_timeout_and_top_k(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(
+            ["crack", "--text", "abc", "--timeout", "2.5", "--top-k", "3"]
+        )
+        assert args.timeout == 2.5
+        assert args.top_k == 3
+
+    def test_crack_known_pairs(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "crack",
+                "--text",
+                "abc",
+                "--known-pair",
+                "it:xy",
+                "--known-pair",
+                "is:za",
+            ]
+        )
+        assert args.known_pair == ["it:xy", "is:za"]
+
     def test_analyse_defaults(self) -> None:
         parser = build_parser()
         args = parser.parse_args(["analyse"])
