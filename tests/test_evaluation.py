@@ -5,49 +5,49 @@ from __future__ import annotations
 
 class TestSymbolErrorRate:
     def test_identical(self) -> None:
-        from cipher.evaluation import symbol_error_rate
+        from cryptex.evaluation import symbol_error_rate
 
         assert symbol_error_rate("hello", "hello") == 0.0
 
     def test_completely_different(self) -> None:
-        from cipher.evaluation import symbol_error_rate
+        from cryptex.evaluation import symbol_error_rate
 
         ser = symbol_error_rate("aaaaa", "zzzzz")
         assert ser == 1.0
 
     def test_partial_match(self) -> None:
-        from cipher.evaluation import symbol_error_rate
+        from cryptex.evaluation import symbol_error_rate
 
         ser = symbol_error_rate("hello", "hxllo")
         assert abs(ser - 0.2) < 1e-9  # 1 out of 5 wrong
 
     def test_different_lengths(self) -> None:
-        from cipher.evaluation import symbol_error_rate
+        from cryptex.evaluation import symbol_error_rate
 
         # Should handle different lengths (use shorter)
         ser = symbol_error_rate("hello", "hel")
         assert isinstance(ser, float)
 
     def test_empty_strings(self) -> None:
-        from cipher.evaluation import symbol_error_rate
+        from cryptex.evaluation import symbol_error_rate
 
         ser = symbol_error_rate("", "")
         assert ser == 0.0 or isinstance(ser, float)
 
     def test_single_char_match(self) -> None:
-        from cipher.evaluation import symbol_error_rate
+        from cryptex.evaluation import symbol_error_rate
 
         assert symbol_error_rate("a", "a") == 0.0
 
     def test_single_char_mismatch(self) -> None:
-        from cipher.evaluation import symbol_error_rate
+        from cryptex.evaluation import symbol_error_rate
 
         assert symbol_error_rate("a", "b") == 1.0
 
 
 class TestKeyAccuracy:
     def test_identical_keys(self) -> None:
-        from cipher.evaluation import key_accuracy
+        from cryptex.evaluation import key_accuracy
 
         import string
 
@@ -55,7 +55,7 @@ class TestKeyAccuracy:
         assert key_accuracy(key, key) == 1.0
 
     def test_completely_different(self) -> None:
-        from cipher.evaluation import key_accuracy
+        from cryptex.evaluation import key_accuracy
 
         key1 = "abcdefghijklmnopqrstuvwxyz"
         key2 = "zyxwvutsrqponmlkjihgfedcba"
@@ -64,7 +64,7 @@ class TestKeyAccuracy:
         assert 0 <= acc <= 1.0
 
     def test_one_swap(self) -> None:
-        from cipher.evaluation import key_accuracy
+        from cryptex.evaluation import key_accuracy
 
         key1 = "abcdefghijklmnopqrstuvwxyz"
         key2 = "bacdefghijklmnopqrstuvwxyz"  # a↔b swapped
@@ -74,14 +74,14 @@ class TestKeyAccuracy:
 
 class TestFrequencyAnalysisBaseline:
     def test_returns_string(self) -> None:
-        from cipher.evaluation import _frequency_analysis_baseline
+        from cryptex.evaluation import _frequency_analysis_baseline
 
         result = _frequency_analysis_baseline("wkh txlfn eurzq ira")
         assert isinstance(result, str)
         assert len(result) > 0
 
     def test_preserves_length(self) -> None:
-        from cipher.evaluation import _frequency_analysis_baseline
+        from cryptex.evaluation import _frequency_analysis_baseline
 
         ct = "abcdefghij"
         result = _frequency_analysis_baseline(ct)
@@ -90,7 +90,7 @@ class TestFrequencyAnalysisBaseline:
 
 class TestRandomRestartBaseline:
     def test_returns_string(self, trained_model) -> None:
-        from cipher.evaluation import _random_restart_baseline
+        from cryptex.evaluation import _random_restart_baseline
 
         result = _random_restart_baseline("hello world", trained_model, n_restarts=5)
         assert isinstance(result, str)
@@ -99,7 +99,7 @@ class TestRandomRestartBaseline:
 
 class TestPhaseTransitionResult:
     def test_defaults(self) -> None:
-        from cipher.evaluation import PhaseTransitionResult
+        from cryptex.evaluation import PhaseTransitionResult
 
         r = PhaseTransitionResult()
         assert r.lengths == []
@@ -108,7 +108,7 @@ class TestPhaseTransitionResult:
 
 class TestBenchmarkEntry:
     def test_defaults(self) -> None:
-        from cipher.evaluation import BenchmarkEntry
+        from cryptex.evaluation import BenchmarkEntry
 
         e = BenchmarkEntry()
         assert e.method == ""
@@ -118,7 +118,7 @@ class TestBenchmarkEntry:
 
 class TestPlotFunctions:
     def test_plot_phase_transition(self, tmp_path) -> None:
-        from cipher.evaluation import PhaseTransitionResult, plot_phase_transition
+        from cryptex.evaluation import PhaseTransitionResult, plot_phase_transition
 
         r = PhaseTransitionResult()
         r.lengths = [50, 100, 200]
@@ -132,7 +132,7 @@ class TestPlotFunctions:
         assert (tmp_path / "pt.png").exists()
 
     def test_plot_benchmark(self, tmp_path) -> None:
-        from cipher.evaluation import BenchmarkEntry, plot_benchmark
+        from cryptex.evaluation import BenchmarkEntry, plot_benchmark
 
         entries = [
             BenchmarkEntry(
@@ -145,3 +145,4 @@ class TestPlotFunctions:
         path = plot_benchmark(entries, save_path=str(tmp_path / "bench.png"))
         assert path is not None
         assert (tmp_path / "bench.png").exists()
+

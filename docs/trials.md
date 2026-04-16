@@ -14,7 +14,7 @@ including custom-input experiments, edge cases, and observed failures.
 Command:
 
 ```bash
-uv run cipher benchmark --length 120 --trials 1 --success-threshold 0.25 --output ./plots
+uv run cryptex benchmark --length 120 --trials 1 --success-threshold 0.25 --output ./plots
 ```
 
 Observed table:
@@ -38,7 +38,7 @@ Result:
 Command:
 
 ```bash
-uv run cipher crack --auto --text "xqzv 9988 @@ lxfopv ef rnhr -- ???"
+uv run cryptex crack --auto --text "xqzv 9988 @@ lxfopv ef rnhr -- ???"
 ```
 
 Observed output summary:
@@ -84,7 +84,7 @@ Notes:
 Command:
 
 ```bash
-uv run cipher crack --cipher substitution --file does_not_exist.txt
+uv run cryptex crack --cipher substitution --file does_not_exist.txt
 ```
 
 Observed output:
@@ -103,7 +103,7 @@ Status:
 Command:
 
 ```bash
-uv run cipher crack --cipher substitution --text '1234 !!! ### $$$'
+uv run cryptex crack --cipher substitution --text '1234 !!! ### $$$'
 ```
 
 Observed output:
@@ -131,3 +131,4 @@ Status:
 - Lint/format/type/test checks: all passing.
 - CLI failure paths for file input and non-alphabetic text: cleanly handled.
 - Custom-input trials show strong performance on substitution/transposition with enough signal, and known weaknesses on short/noisy Playfair and Vigenere samples.
+

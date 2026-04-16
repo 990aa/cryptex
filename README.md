@@ -1,6 +1,6 @@
-# cipher
+# cryptex
 
-High-performance classical cryptanalysis toolkit (v0.4.0) for educational and research use.
+High-performance classical cryptanalysis toolkit (v0.5.0) for educational and research use.
 
 It provides:
 - Substitution cracking with adaptive MCMC, parallel tempering, and crossover jumps.
@@ -26,13 +26,13 @@ uv sync --dev
 
 ```bash
 # Train language models (first run downloads corpus)
-uv run cipher train
+uv run cryptex train
 
 # Run a live substitution demo
-uv run cipher demo --cipher substitution --method mcmc
+uv run cryptex demo --cipher substitution --method mcmc
 
 # Crack unknown text with automatic routing
-uv run cipher crack --auto --text "xqzv 9988 @@ lxfopv ef rnhr -- ???"
+uv run cryptex crack --auto --text "xqzv 9988 @@ lxfopv ef rnhr -- ???"
 
 # Run full tests
 uv run pytest -q
@@ -42,22 +42,22 @@ uv run pytest -q
 
 | Command | Purpose |
 | --- | --- |
-| `uv run cipher train [--force]` | Download corpus and train/load language models |
-| `uv run cipher demo ...` | Encrypt sample text and crack live |
-| `uv run cipher crack ...` | Crack custom ciphertext from text/file/stdin |
-| `uv run cipher detect ...` | Predict cipher family and print feature diagnostics |
-| `uv run cipher analyse ...` | MCMC convergence diagnostics + plots |
-| `uv run cipher benchmark ...` | Compare MCMC, GA, frequency baseline, random restart |
-| `uv run cipher phase-transition ...` | Success rate vs ciphertext length |
-| `uv run cipher stress-test` | Run adversarial robustness suite |
-| `uv run cipher historical` | Run curated historical challenges |
-| `uv run cipher language ...` | Train/list/detect language models |
+| `uv run cryptex train [--force]` | Download corpus and train/load language models |
+| `uv run cryptex demo ...` | Encrypt sample text and crack live |
+| `uv run cryptex crack ...` | Crack custom ciphertext from text/file/stdin |
+| `uv run cryptex detect ...` | Predict cipher family and print feature diagnostics |
+| `uv run cryptex analyse ...` | MCMC convergence diagnostics + plots |
+| `uv run cryptex benchmark ...` | Compare MCMC, GA, frequency baseline, random restart |
+| `uv run cryptex phase-transition ...` | Success rate vs ciphertext length |
+| `uv run cryptex stress-test` | Run adversarial robustness suite |
+| `uv run cryptex historical` | Run curated historical challenges |
+| `uv run cryptex language ...` | Train/list/detect language models |
 
 Run help any time:
 
 ```bash
-uv run cipher --help
-uv run cipher crack --help
+uv run cryptex --help
+uv run cryptex crack --help
 ```
 
 ## Crack Command: All Input Styles
@@ -65,31 +65,31 @@ uv run cipher crack --help
 ### 1) Direct text
 
 ```bash
-uv run cipher crack --cipher substitution --method mcmc --text "wkh txlfn eurzq ira mxpsv ryhu wkh odcb grj"
+uv run cryptex crack --cipher substitution --method mcmc --text "wkh txlfn eurzq ira mxpsv ryhu wkh odcb grj"
 ```
 
 ### 2) File input
 
 ```bash
-uv run cipher crack --cipher vigenere --file .\samples\vig.txt
+uv run cryptex crack --cipher vigenere --file .\samples\vig.txt
 ```
 
 ### 3) stdin input
 
 ```bash
-Get-Content .\samples\mystery.txt | uv run cipher crack --cipher substitution
+Get-Content .\samples\mystery.txt | uv run cryptex crack --cipher substitution
 ```
 
 ### 4) Auto mode (detect + orchestrate)
 
 ```bash
-uv run cipher crack --auto --text "xqzv 9988 @@ lxfopv ef rnhr -- ???"
+uv run cryptex crack --auto --text "xqzv 9988 @@ lxfopv ef rnhr -- ???"
 ```
 
 ### 5) Dirty text with punctuation and mixed case
 
 ```bash
-uv run cipher crack --cipher substitution --text "Wkh txlfn, Eurzq Fox! 2026?"
+uv run cryptex crack --cipher substitution --text "Wkh txlfn, Eurzq Fox! 2026?"
 ```
 
 For substitution/noisy-substitution routes, the CLI uses ghost mapping to:
@@ -116,16 +116,16 @@ For substitution/noisy-substitution routes, the CLI uses ghost mapping to:
 Examples:
 
 ```bash
-uv run cipher demo --cipher substitution --method genetic
-uv run cipher crack --cipher substitution --method hmm --file .\cipher.txt
-uv run cipher demo --cipher noisy-substitution --method hmm
+uv run cryptex demo --cipher substitution --method genetic
+uv run cryptex crack --cipher substitution --method hmm --file .\cipher.txt
+uv run cryptex demo --cipher noisy-substitution --method hmm
 ```
 
 ## Detection and Auto Routing
 
 ```bash
-uv run cipher detect --text "lxfopvefrnhr"
-uv run cipher detect --file .\unknown.txt
+uv run cryptex detect --text "lxfopvefrnhr"
+uv run cryptex detect --file .\unknown.txt
 ```
 
 `detect` reports:
@@ -143,7 +143,7 @@ uv run cipher detect --file .\unknown.txt
 ### Convergence analysis
 
 ```bash
-uv run cipher analyse --output .\plots
+uv run cryptex analyse --output .\plots
 ```
 
 Generates:
@@ -154,7 +154,7 @@ Generates:
 ### Benchmark
 
 ```bash
-uv run cipher benchmark --length 120 --trials 3 --success-threshold 0.25 --output .\plots
+uv run cryptex benchmark --length 120 --trials 3 --success-threshold 0.25 --output .\plots
 ```
 
 Notes:
@@ -164,18 +164,18 @@ Notes:
 ### Phase transition
 
 ```bash
-uv run cipher phase-transition --trials 3 --output .\plots
+uv run cryptex phase-transition --trials 3 --output .\plots
 ```
 
 ## Stress, Historical, and Language Commands
 
 ```bash
-uv run cipher stress-test
-uv run cipher historical
+uv run cryptex stress-test
+uv run cryptex historical
 
-uv run cipher language list
-uv run cipher language train --lang french
-uv run cipher language detect --text "bonjour le monde"
+uv run cryptex language list
+uv run cryptex language train --lang french
+uv run cryptex language detect --text "bonjour le monde"
 ```
 
 Supported languages: english, french, german, spanish.
@@ -210,3 +210,4 @@ See full empirical run log in `docs/trials.md`.
 - `docs/IMPLEMENTATION.md` - architecture and module internals
 - `docs/TESTING.md` - test strategy and reproducible command set
 - `docs/trials.md` - custom input matrix with observed outputs and failures
+

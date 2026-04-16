@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from rich.panel import Panel
 
-from cipher.display import (
+from cryptex.display import (
     GenericDisplay,
     HMMDisplay,
     MCMCDisplay,
@@ -180,3 +180,4 @@ class TestPrintResultBox:
             elapsed=1.23,
             extra_info={"Chains": "4", "Accuracy": "95%"},
         )
+

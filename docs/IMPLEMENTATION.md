@@ -172,3 +172,4 @@ Latest validated state during this update:
 - Playfair generally requires longer text and more compute budget.
 - Symbol-only inputs are intentionally rejected for substitution cracking.
 - Homophonic ciphers are only heuristically flagged, not fully solved yet.
+

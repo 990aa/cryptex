@@ -35,7 +35,7 @@ class TestDownloadCorpus:
 
     def test_corpus_cached(self) -> None:
         """Second call should use cache (fast)."""
-        from cipher.corpus import download_corpus
+        from cryptex.corpus import download_corpus
 
         c1 = download_corpus()
         c2 = download_corpus()
@@ -46,7 +46,7 @@ class TestCorpusEdgeCases:
     """Edge cases for corpus module."""
 
     def test_strip_gutenberg_header_footer(self) -> None:
-        from cipher.corpus import _strip_gutenberg_header_footer
+        from cryptex.corpus import _strip_gutenberg_header_footer
 
         text = (
             "*** START OF THE PROJECT GUTENBERG EBOOK ***\n"
@@ -59,8 +59,9 @@ class TestCorpusEdgeCases:
         assert "body" in result.lower()
 
     def test_strip_no_markers(self) -> None:
-        from cipher.corpus import _strip_gutenberg_header_footer
+        from cryptex.corpus import _strip_gutenberg_header_footer
 
         text = "Just plain text without markers."
         result = _strip_gutenberg_header_footer(text)
         assert "plain text" in result.lower()
+

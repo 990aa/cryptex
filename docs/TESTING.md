@@ -13,12 +13,12 @@ The first model-dependent run downloads corpus data and builds local model artif
 ### Standard cracking modes
 
 ```bash
-uv run cipher demo --cipher substitution --method mcmc
-uv run cipher demo --cipher substitution --method hmm
-uv run cipher demo --cipher substitution --method genetic
-uv run cipher demo --cipher vigenere
-uv run cipher demo --cipher transposition
-uv run cipher demo --cipher playfair
+uv run cryptex demo --cipher substitution --method mcmc
+uv run cryptex demo --cipher substitution --method hmm
+uv run cryptex demo --cipher substitution --method genetic
+uv run cryptex demo --cipher vigenere
+uv run cryptex demo --cipher transposition
+uv run cryptex demo --cipher playfair
 ```
 
 Expected:
@@ -29,9 +29,9 @@ Expected:
 ### Input sources (`--text`, `--file`, `stdin`)
 
 ```bash
-uv run cipher crack --cipher substitution --text "wkh txlfn eurzq ira"
-uv run cipher crack --cipher substitution --file .\cipher.txt
-Get-Content .\cipher.txt | uv run cipher crack --cipher substitution
+uv run cryptex crack --cipher substitution --text "wkh txlfn eurzq ira"
+uv run cryptex crack --cipher substitution --file .\cipher.txt
+Get-Content .\cipher.txt | uv run cryptex crack --cipher substitution
 ```
 
 Expected:
@@ -43,8 +43,8 @@ Expected:
 ### Auto orchestration and detection
 
 ```bash
-uv run cipher detect --text "lxfopvefrnhr"
-uv run cipher crack --auto --text "xqzv 9988 @@ lxfopv ef rnhr -- ???"
+uv run cryptex detect --text "lxfopvefrnhr"
+uv run cryptex crack --auto --text "xqzv 9988 @@ lxfopv ef rnhr -- ???"
 ```
 
 Expected:
@@ -55,9 +55,9 @@ Expected:
 ### Evaluation plots
 
 ```bash
-uv run cipher analyse --output .\plots
-uv run cipher benchmark --length 120 --trials 1 --success-threshold 0.25 --output .\plots
-uv run cipher phase-transition --trials 1 --output .\plots
+uv run cryptex analyse --output .\plots
+uv run cryptex benchmark --length 120 --trials 1 --success-threshold 0.25 --output .\plots
+uv run cryptex phase-transition --trials 1 --output .\plots
 ```
 
 Expected files:
@@ -75,7 +75,7 @@ These are expected error cases and should remain stable.
 ### Missing input file
 
 ```bash
-uv run cipher crack --cipher substitution --file does_not_exist.txt
+uv run cryptex crack --cipher substitution --file does_not_exist.txt
 ```
 
 Expected:
@@ -86,7 +86,7 @@ Expected:
 ### No decipherable alphabetic payload
 
 ```bash
-uv run cipher crack --cipher substitution --text '1234 !!! ### $$$'
+uv run cryptex crack --cipher substitution --text '1234 !!! ### $$$'
 ```
 
 Expected:
@@ -99,3 +99,4 @@ Expected:
 - MCMC-heavy tests and stress commands can be slow on low-power hardware.
 - Playfair cracking is computationally expensive and may need longer runs for high quality output.
 - Benchmark and phase-transition commands are best run with small trial counts during rapid iteration.
+

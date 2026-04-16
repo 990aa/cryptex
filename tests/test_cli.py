@@ -6,7 +6,7 @@ import argparse
 
 import pytest
 
-from cipher.cli import build_parser, main
+from cryptex.cli import build_parser, main
 
 
 class TestBuildParser:
@@ -171,3 +171,4 @@ class TestMainDispatch:
         """Unknown subcommand should cause SystemExit from argparse."""
         with pytest.raises(SystemExit):
             main(["nonexistent_command"])
+

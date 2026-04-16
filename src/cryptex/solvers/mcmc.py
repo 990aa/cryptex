@@ -400,8 +400,9 @@ def run_mcmc(
                     config.top_k_candidates,
                 )
 
-        chain_best_score = max(r.best_score for r in replicas)
-        chain_best_perm = np.array(replicas[0].best_perm, copy=True)
+        best_replica = max(replicas, key=lambda r: r.best_score)
+        chain_best_score = best_replica.best_score
+        chain_best_perm = np.array(best_replica.best_perm, copy=True)
         cold_best_score = -math.inf
         cold_no_improve = 0
 
