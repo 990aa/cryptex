@@ -9,7 +9,7 @@ including custom-input experiments, edge cases, and observed failures.
 - Runner: `uv run ...`
 - Working directory: repository root
 
-## 2) Benchmark Plot Validation (Success Rate Fix)
+## 2) Benchmark Report Validation (Success Rate Fix)
 
 Command:
 
@@ -26,11 +26,11 @@ Observed table:
 
 Observed artifact:
 
-- `plots/benchmark.png` saved
+- `plots/benchmark.json` saved
 
 Result:
 
-- Success-rate bars were populated and annotated.
+- Benchmark metrics were persisted in JSON format.
 - Threshold (`SER <= 25%`) was applied correctly.
 
 ## 3) Auto-Orchestration Trial (Low Confidence Input)
@@ -119,11 +119,11 @@ Status:
 
 ## 6) Generated/Verified Artifacts
 
-- `plots/benchmark.png`
-- `plots/convergence_plot.png` (previously generated and still valid)
-- `plots/key_heatmap.png` (previously generated and still valid)
-- `plots/frequency_comparison.png` (previously generated and still valid)
-- `plots/phase_transition.png` (previously generated and still valid)
+- `plots/benchmark.json`
+- `plots/convergence_plot.json`
+- `plots/key_heatmap.json`
+- `plots/frequency_comparison.json`
+- `plots/phase_transition.json`
 
 ## 7) Summary
 

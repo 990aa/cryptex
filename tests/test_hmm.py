@@ -52,6 +52,21 @@ class TestHMMHelpers:
         probs = np.exp(result)
         assert abs(probs.sum() - 1.0) < 1e-6
 
+    def test_english_frequency_rank_covers_all_symbols(self) -> None:
+        from cryptex.hmm import _english_frequency_rank
+
+        rank = _english_frequency_rank(26)
+        assert sorted(rank.tolist()) == list(range(26))
+
+    def test_init_emission_from_frequency_normalises_rows(self) -> None:
+        from cryptex.hmm import _init_emission_from_frequency
+
+        obs = np.array([0, 0, 1, 1, 1, 2, 3, 4], dtype=np.int32)
+        log_emit = _init_emission_from_frequency(obs, A=5, noise_rate=0.05)
+        emit = np.exp(log_emit)
+        assert emit.shape == (5, 5)
+        assert np.allclose(emit.sum(axis=1), 1.0)
+
 
 class TestHMMSolver:
     @pytest.mark.timeout(60)

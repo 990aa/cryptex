@@ -13,6 +13,11 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from cryptex.core.ngram import NgramModel, get_model, text_to_indices
+
+
+_DETECTOR_MODEL: NgramModel | None = None
+
 
 # Expected English IoC
 ENGLISH_IOC = 0.0667
@@ -31,6 +36,7 @@ class CipherFeatures:
     autocorrelation_peak: int = 0
     autocorrelation_values: list[float] | None = None
     even_odd_balance: float = 0.0
+    playfair_score: float = 0.0
     length: int = 0
 
 
@@ -162,6 +168,80 @@ def _even_odd_balance(text: str) -> float:
     return min(score, 1.0)
 
 
+def _playfair_score(text: str) -> float:
+    """Playfair-specific structure score in [0, 1]."""
+    letters = "".join(ch for ch in text if ch in string.ascii_lowercase)
+    if len(letters) < 4:
+        return 0.0
+
+    score = 0.0
+    if len(letters) % 2 == 0:
+        score += 0.35
+    if "j" not in letters:
+        score += 0.25
+
+    digraphs = [letters[i : i + 2] for i in range(0, len(letters) - 1, 2)]
+    unique_ratio = len(set(digraphs)) / max(len(digraphs), 1)
+    score += 0.25 * min(1.0, unique_ratio / 0.85)
+
+    repeated_pair_ratio = sum(1 for dg in digraphs if dg[0] == dg[1]) / max(
+        len(digraphs), 1
+    )
+    score += 0.15 * max(0.0, 1.0 - repeated_pair_ratio / 0.05)
+    return float(min(1.0, max(0.0, score)))
+
+
+def _softmax_confidence(scores: dict[str, float]) -> dict[str, float]:
+    """Convert raw classifier scores into calibrated probabilities."""
+    if not scores:
+        return {}
+    labels = list(scores.keys())
+    values = np.asarray([scores[k] for k in labels], dtype=np.float64)
+    values -= np.max(values)
+    probs = np.exp(values)
+    denom = probs.sum()
+    if denom <= 0:
+        return {k: 0.0 for k in labels}
+    probs /= denom
+    return {k: float(p) for k, p in zip(labels, probs)}
+
+
+def _score_per_char(text: str, model: NgramModel) -> float:
+    """Average language-model score per character."""
+    filtered = "".join(
+        ch
+        for ch in text.lower()
+        if ch in string.ascii_lowercase or (model.include_space and ch == " ")
+    )
+    idx = text_to_indices(filtered, include_space=model.include_space)
+    if len(idx) == 0:
+        return -math.inf
+    return float(model.score_adaptive(idx) / max(len(idx), 1))
+
+
+def _is_plaintext(
+    text: str,
+    model: NgramModel,
+    features: CipherFeatures,
+    threshold: float = -2.5,
+) -> bool:
+    """Heuristic plaintext gate before cipher-type classification."""
+    score = _score_per_char(text, model)
+    return (
+        score > threshold
+        and 0.05 <= features.ioc <= 0.085
+        and features.chi_squared < 1.2
+        and features.entropy < 4.45
+    )
+
+
+def _get_detector_model() -> NgramModel:
+    global _DETECTOR_MODEL
+    if _DETECTOR_MODEL is None:
+        _DETECTOR_MODEL = get_model(include_space=True)
+    return _DETECTOR_MODEL
+
+
 def extract_features(ciphertext: str) -> CipherFeatures:
     """Extract statistical features from ciphertext."""
     letters = "".join(ch for ch in ciphertext if ch in string.ascii_lowercase)
@@ -175,6 +255,7 @@ def extract_features(ciphertext: str) -> CipherFeatures:
         autocorrelation_peak=autocorr_peak,
         autocorrelation_values=autocorr_values,
         even_odd_balance=_even_odd_balance(letters),
+        playfair_score=_playfair_score(letters),
         length=len(letters),
     )
 
@@ -182,7 +263,10 @@ def extract_features(ciphertext: str) -> CipherFeatures:
 # Rule-based classifier
 
 
-def detect_cipher_type(ciphertext: str) -> DetectionResult:
+def detect_cipher_type(
+    ciphertext: str,
+    model: NgramModel | None = None,
+) -> DetectionResult:
     """Detect the type of cipher used on the given ciphertext.
 
     Uses a rule-based classifier with statistical features.
@@ -194,6 +278,12 @@ def detect_cipher_type(ciphertext: str) -> DetectionResult:
     DetectionResult
         Predicted cipher type and confidence.
     """
+    if model is None:
+        try:
+            model = _get_detector_model()
+        except Exception:  # pragma: no cover - defensive fallback
+            model = None
+
     features = extract_features(ciphertext)
     scores: dict[str, float] = {
         "substitution": 0.0,
@@ -270,9 +360,15 @@ def detect_cipher_type(ciphertext: str) -> DetectionResult:
         reasoning_parts.append("Spaces present with high IoC")
 
     # --- Playfair indicators ---
-    if features.even_odd_balance > 0.7:
-        scores["playfair"] += 2.0
-        reasoning_parts.append("Even length, no 'j' — Playfair indicators")
+    playfair_shape = features.playfair_score
+    if playfair_shape > 0.55:
+        scores["playfair"] += 2.5 * playfair_shape
+        reasoning_parts.append(
+            f"Playfair structural score {playfair_shape:.2f} (even digraph behavior)"
+        )
+    elif features.even_odd_balance > 0.7:
+        scores["playfair"] += 1.5
+        reasoning_parts.append("Even length, no 'j' — weak Playfair indicators")
 
     # No spaces + even length + medium IoC → strong Playfair
     if not has_spaces and len(letters_only) % 2 == 0 and 0.040 < ioc < 0.060:
@@ -294,19 +390,18 @@ def detect_cipher_type(ciphertext: str) -> DetectionResult:
         scores["transposition"] += 0.5
         scores["substitution"] += 0.5
 
-    # Normalise to confidence
-    total = sum(scores.values())
-    if total > 0:
-        for k in scores:
-            scores[k] /= total
+    if model is not None and _is_plaintext(ciphertext, model, features):
+        scores["plaintext"] = max(scores.values(), default=0.0) + 4.0
+        reasoning_parts.insert(0, "Language model strongly matches plaintext")
 
-    predicted = max(scores, key=lambda k: scores[k])
-    confidence = scores[predicted]
+    probs = _softmax_confidence(scores)
+    predicted = max(probs, key=lambda k: probs[k]) if probs else ""
+    confidence = probs.get(predicted, 0.0)
 
     return DetectionResult(
         predicted_type=predicted,
         confidence=confidence,
         features=features,
-        all_scores=scores,
+        all_scores=probs,
         reasoning="; ".join(reasoning_parts),
     )

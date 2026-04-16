@@ -52,7 +52,7 @@ Expected:
 - predicted type + confidence
 - auto mode prints candidate comparison and selected winner
 
-### Evaluation plots
+### Evaluation reports
 
 ```bash
 uv run cryptex analyse --output .\plots
@@ -62,11 +62,11 @@ uv run cryptex phase-transition --trials 1 --output .\plots
 
 Expected files:
 
-- `plots/convergence_plot.png`
-- `plots/key_heatmap.png`
-- `plots/frequency_comparison.png`
-- `plots/benchmark.png`
-- `plots/phase_transition.png`
+- `plots/convergence_plot.json`
+- `plots/key_heatmap.json`
+- `plots/frequency_comparison.json`
+- `plots/benchmark.json`
+- `plots/phase_transition.json`
 
 ## 6) Failure-Path Checks
 

@@ -138,7 +138,7 @@ uv run cryptex detect --file .\unknown.txt
 - High confidence (>= 80%): route directly to predicted solver.
 - Low confidence: run competitive candidates and choose highest score.
 
-## Analysis and Plots
+## Analysis Reports
 
 ### Convergence analysis
 
@@ -147,9 +147,9 @@ uv run cryptex analyse --output .\plots
 ```
 
 Generates:
-- `plots/convergence_plot.png`
-- `plots/key_heatmap.png`
-- `plots/frequency_comparison.png`
+- `plots/convergence_plot.json`
+- `plots/key_heatmap.json`
+- `plots/frequency_comparison.json`
 
 ### Benchmark
 
@@ -159,7 +159,7 @@ uv run cryptex benchmark --length 120 --trials 3 --success-threshold 0.25 --outp
 
 Notes:
 - Success is counted when `SER <= success-threshold`.
-- The benchmark plot includes explicit success-rate labels for each method.
+- The benchmark JSON report includes per-method SER, success-rate, and runtime metrics.
 
 ### Phase transition
 

@@ -8,7 +8,6 @@ dependencies = [
     "numpy",
     "rich",
     "requests",
-    "matplotlib",
     "numba>=0.65.0",
 ]
 

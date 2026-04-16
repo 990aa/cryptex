@@ -1,0 +1,6 @@
+{
+  "artifact": "benchmark",
+  "status": "json_migration_placeholder",
+  "message": "Legacy graph output removed. Regenerate this report with `uv run cryptex benchmark`.",
+  "source_image": "benchmark.png"
+}

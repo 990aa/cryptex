@@ -90,20 +90,33 @@ def restore_ghost_text(plaintext_core: str, mapping: GhostMapping) -> str:
     letters; symbols and punctuation stay exactly where they were.
     """
     letters = [ch for ch in plaintext_core if "a" <= ch <= "z"]
+    target_len = len(mapping.alpha_positions)
+    if len(letters) < target_len:
+        letters.extend(["?"] * (target_len - len(letters)))
+    elif len(letters) > target_len:
+        letters = letters[:target_len]
+
     out = list(mapping.original_text)
 
-    li = 0
-    for pos, is_upper in zip(mapping.alpha_positions, mapping.uppercase_mask):
-        if li < len(letters):
-            ch = letters[li]
-            li += 1
-        else:
-            fallback = _ascii_letter_from_char(mapping.original_text[pos])
-            ch = fallback if fallback is not None else "x"
-
+    for li, (pos, is_upper) in enumerate(
+        zip(mapping.alpha_positions, mapping.uppercase_mask)
+    ):
+        ch = letters[li]
         out[pos] = ch.upper() if is_upper else ch
 
     return "".join(out)
+
+
+def test_ghost_roundtrip_invariant(text: str) -> bool:
+    """Validate that ghost mapping metadata is stable under restore roundtrips."""
+    mapping = ghost_map_text(text)
+    restored = restore_ghost_text(mapping.core_text, mapping)
+    remapped = ghost_map_text(restored)
+    return (
+        remapped.core_text == mapping.core_text
+        and remapped.alpha_positions == mapping.alpha_positions
+        and remapped.uppercase_mask == mapping.uppercase_mask
+    )
 
 
 def likely_homophonic_cipher(text: str, threshold: int = 40) -> bool:

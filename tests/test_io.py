@@ -25,6 +25,18 @@ class TestGhostMapping:
         mapping = ghost_map_text("Caf\u00e9 d\u00e9j\u00e0 vu")
         assert mapping.core_text == "cafe deja vu"
 
+    def test_restore_length_mismatch_pads_with_question_mark(self) -> None:
+        from cryptex.io import ghost_map_text, restore_ghost_text
+
+        mapping = ghost_map_text("Hello, World!")
+        restored = restore_ghost_text("abc", mapping)
+        assert restored == "Abc??, ?????!"
+
+    def test_roundtrip_invariant(self) -> None:
+        from cryptex.io import test_ghost_roundtrip_invariant
+
+        assert test_ghost_roundtrip_invariant("HeLLo, World! Cafe 123") is True
+
 
 class TestAlphabetDiscovery:
     def test_discover_effective_alphabet(self) -> None:

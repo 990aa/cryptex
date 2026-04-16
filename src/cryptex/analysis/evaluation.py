@@ -8,6 +8,7 @@ Provides:
 
 from __future__ import annotations
 
+import json
 import math
 import random
 import string
@@ -19,6 +20,17 @@ import numpy as np
 
 from cryptex.ciphers import SimpleSubstitution
 from cryptex.ngram import NgramModel, text_to_indices
+
+
+def _write_json_report(
+    payload: dict[str, object],
+    save_path: str | Path | None,
+    default_name: str,
+) -> Path:
+    path = Path(save_path) if save_path is not None else Path(default_name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return path
 
 
 # Symbol Error Rate
@@ -160,66 +172,15 @@ def plot_phase_transition(
     pt_result: PhaseTransitionResult,
     save_path: str | Path | None = None,
 ) -> Path | None:
-    """Plot the phase transition graph: success rate vs ciphertext length."""
-    import matplotlib
-
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-
-    fig, ax1 = plt.subplots(figsize=(10, 6))
-
-    ax1.plot(
-        pt_result.lengths,
-        pt_result.success_rates,
-        "b-o",
-        linewidth=2,
-        markersize=8,
-        label="Success Rate",
-    )
-    ax1.set_xlabel("Ciphertext Length (characters)")
-    ax1.set_ylabel("Success Rate", color="blue")
-    ax1.tick_params(axis="y", labelcolor="blue")
-    ax1.set_ylim(-0.05, 1.05)
-    ax1.axhline(y=0.5, color="gray", linestyle="--", alpha=0.5, label="50% threshold")
-
-    if pt_result.threshold_length:
-        ax1.axvline(
-            x=pt_result.threshold_length,
-            color="green",
-            linestyle="--",
-            alpha=0.7,
-            label=f"Threshold ≈ {pt_result.threshold_length} chars",
-        )
-
-    # SER on secondary axis
-    ax2 = ax1.twinx()
-    ax2.plot(
-        pt_result.lengths,
-        pt_result.avg_ser,
-        "r--s",
-        linewidth=1.5,
-        markersize=6,
-        alpha=0.7,
-        label="Avg SER",
-    )
-    ax2.set_ylabel("Average Symbol Error Rate", color="red")
-    ax2.tick_params(axis="y", labelcolor="red")
-    ax2.set_ylim(-0.05, 1.05)
-
-    ax1.set_title("Phase Transition: Decryption Success vs. Ciphertext Length")
-    lines1, labels1 = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, loc="center right")
-
-    plt.tight_layout()
-
-    if save_path is None:
-        save_path = Path("phase_transition.png")
-    else:
-        save_path = Path(save_path)
-    fig.savefig(save_path, dpi=150)
-    plt.close(fig)
-    return save_path
+    """Write phase-transition metrics as JSON."""
+    payload: dict[str, object] = {
+        "lengths": [int(v) for v in pt_result.lengths],
+        "success_rates": [float(v) for v in pt_result.success_rates],
+        "avg_ser": [float(v) for v in pt_result.avg_ser],
+        "avg_times": [float(v) for v in pt_result.avg_times],
+        "threshold_length": int(pt_result.threshold_length),
+    }
+    return _write_json_report(payload, save_path, "phase_transition.json")
 
 
 # Benchmarking Against Baselines
@@ -455,59 +416,19 @@ def plot_benchmark(
     save_path: str | Path | None = None,
     success_threshold: float = 0.20,
 ) -> Path | None:
-    """Plot benchmark comparison as a grouped bar chart."""
-    import matplotlib
-
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-
-    methods = [e.method for e in entries]
-    sers = [e.avg_ser for e in entries]
-    success = [e.success_rate for e in entries]
-    times = [e.avg_time for e in entries]
-
-    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
-
-    colors = ["#2196F3", "#FF9800", "#4CAF50", "#9C27B0"]
-
-    # SER
-    axes[0].bar(methods, sers, color=colors[: len(methods)])
-    axes[0].set_ylabel("Avg Symbol Error Rate")
-    axes[0].set_title("Accuracy (lower is better)")
-    axes[0].set_ylim(0, 1)
-
-    # Success rate
-    axes[1].bar(methods, success, color=colors[: len(methods)])
-    axes[1].set_ylabel("Success Rate")
-    axes[1].set_title(f"Success Rate (SER <= {success_threshold:.0%})")
-    axes[1].set_ylim(0, 1.05)
-
-    # Time
-    axes[2].bar(methods, times, color=colors[: len(methods)])
-    axes[2].set_ylabel("Avg Time (s)")
-    axes[2].set_title("Speed")
-
-    for ax in axes:
-        ax.tick_params(axis="x", rotation=15)
-
-    # Annotate success-rate bars so zero/low values are still visible in output.
-    for bar, value in zip(axes[1].patches, success):
-        axes[1].text(
-            bar.get_x() + bar.get_width() / 2,
-            min(value + 0.02, 1.02),
-            f"{value:.0%}",
-            ha="center",
-            va="bottom",
-            fontsize=9,
-        )
-
-    plt.suptitle("Benchmark: Cipher Cracking Methods", fontsize=14, y=1.02)
-    plt.tight_layout()
-
-    if save_path is None:
-        save_path = Path("benchmark.png")
-    else:
-        save_path = Path(save_path)
-    fig.savefig(save_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    return save_path
+    """Write benchmark aggregates as JSON."""
+    payload: dict[str, object] = {
+        "success_threshold": float(success_threshold),
+        "entries": [
+            {
+                "method": e.method,
+                "avg_ser": float(e.avg_ser),
+                "avg_score": float(e.avg_score),
+                "avg_time": float(e.avg_time),
+                "success_rate": float(e.success_rate),
+                "trials": int(e.trials),
+            }
+            for e in entries
+        ],
+    }
+    return _write_json_report(payload, save_path, "benchmark.json")

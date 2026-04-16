@@ -73,6 +73,46 @@ def _normalise_log(log_probs: np.ndarray, axis: int = -1) -> np.ndarray:
     return log_probs - lse
 
 
+def _english_frequency_rank(A: int) -> np.ndarray:
+    """Return plaintext symbol indices from most to least frequent in English."""
+    order = "etaoinshrdlcumwfgypbvkjxqz"
+    if A == 27:
+        rank = [0] + [ord(ch) - ord("a") + 1 for ch in order]
+    else:
+        rank = [ord(ch) - ord("a") for ch in order if (ord(ch) - ord("a")) < A]
+    seen = set(rank)
+    for i in range(A):
+        if i not in seen:
+            rank.append(i)
+    return np.asarray(rank[:A], dtype=np.int32)
+
+
+def _init_emission_from_frequency(
+    obs: np.ndarray,
+    A: int,
+    noise_rate: float,
+) -> np.ndarray:
+    """Initialise emission matrix from observed-vs-English frequency ranking.
+
+    The emission model represents noisy substitution:
+      P(obs=j | plain=i) = 1-noise_rate for the aligned mapping
+      and a small residual mass for off-mapping symbols.
+    """
+    counts = np.bincount(obs, minlength=A).astype(np.float64)
+    obs_rank = np.argsort(-counts)
+    plain_rank = _english_frequency_rank(A)
+
+    floor = noise_rate / max(A - 1, 1)
+    emit = np.full((A, A), floor, dtype=np.float64)
+    peak = max(1e-8, 1.0 - noise_rate)
+
+    for plain_idx, obs_idx in zip(plain_rank, obs_rank):
+        emit[plain_idx, obs_idx] = peak
+
+    emit /= emit.sum(axis=1, keepdims=True)
+    return np.log(emit + 1e-30)
+
+
 # Core solver
 
 
@@ -81,8 +121,14 @@ def run_hmm(
     model: NgramModel,
     config: HMMConfig | None = None,
     callback: HMMCallback | None = None,
+    noise_rate: float = 0.05,
 ) -> HMMResult:
-    """Crack a substitution cipher using the HMM/EM (Baum-Welch) algorithm.
+    """Crack a noisy substitution cipher using HMM/EM (Baum-Welch).
+
+    This solver is designed for probabilistic or noisy substitution channels where
+    each plaintext symbol can emit multiple ciphertext symbols. For clean,
+    deterministic monoalphabetic substitution, the MCMC solver is typically
+    stronger and faster.
 
     Parameters
     ----------
@@ -93,6 +139,9 @@ def run_hmm(
     config : HMMConfig, optional
     callback : callable, optional
         Progress callback receiving (iteration, current_plaintext, log_likelihood).
+    noise_rate : float
+        Initial channel noise rate in [0, 1). Values around 0.03-0.10 are typical
+        for mildly noisy ciphers.
 
     Returns
     -------
@@ -100,6 +149,8 @@ def run_hmm(
     """
     if config is None:
         config = HMMConfig()
+
+    noise_rate = float(np.clip(noise_rate, 0.0, 0.49))
 
     A = model.A  # alphabet size (26 or 27)
     include_space = model.include_space
@@ -132,13 +183,14 @@ def run_hmm(
     assert model.log_uni is not None
     log_pi = model.log_uni.copy()  # (A,)
 
-    # Emission matrix (log): start near-uniform with slight random perturbation
+    # Emission matrix (log): frequency-ranked initialisation under a noisy channel.
     # log_emit[hidden_state, observed_symbol]
-    log_emit = np.random.dirichlet(np.ones(A) * 10, size=A)
-    log_emit = np.log(log_emit + 1e-30)
+    log_emit = _init_emission_from_frequency(obs, A, noise_rate)
 
     result = HMMResult()
     prev_ll = -np.inf
+    ll = -np.inf
+    current_plaintext = ""
 
     for em_iter in range(1, config.max_iter + 1):
         # ==============================================================
@@ -200,7 +252,7 @@ def run_hmm(
 
         # --- Update emission probabilities ---
         gamma = np.exp(log_gamma)  # (T, A)  — probabilities
-        new_emit = np.full((A, A), 1e-10)  # Laplace-ish floor
+        new_emit = np.full((A, A), 1e-10)  # small floor for numerical stability
         for t in range(T):
             new_emit[:, obs[t]] += gamma[t]
         # Normalise rows

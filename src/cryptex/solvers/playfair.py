@@ -1,20 +1,21 @@
-"""Playfair cipher cracker via MCMC over the 5×5 key matrix.
+"""Playfair cipher cracker using population-based hill climbing.
 
-Optimised inner loop: builds a 25×25 digraph→digraph lookup table from the
-key matrix so that decrypt is a fast array operation rather than rebuilding
-the matrix every iteration.
+This implementation keeps a population of candidate keys and performs
+temperature-guided local improvements with periodic elite injection.
 """
 
 from __future__ import annotations
 
 import math
 import random
+import warnings
 from dataclasses import dataclass
 from typing import Callable
 
 import numpy as np
 
 from cryptex.ngram import NgramModel
+from cryptex.warnings import CryptexWarning
 
 
 # Alphabet used by Playfair (no j)
@@ -25,11 +26,14 @@ PF_TO_ALPHA_IDX = np.asarray([ord(ch) - ord("a") for ch in PF_ALPHA], dtype=np.i
 
 @dataclass
 class PlayfairConfig:
-    iterations: int = 80_000
-    num_restarts: int = 6
-    t_start: float = 50.0
-    t_min: float = 0.005
-    cooling_rate: float = 0.99989
+    iterations: int = 200_000
+    num_restarts: int = 10
+    population_size: int = 20
+    t_start: float = 20.0
+    t_min: float = 0.001
+    cooling_rate: float = 0.99995
+    use_digraph_scoring: bool = True
+    min_recommended_length: int = 100
     callback_interval: int = 5000
 
 
@@ -42,6 +46,14 @@ class PlayfairResult:
 
 
 PlayfairCallback = Callable[[int, int, str, float, float], None]
+
+
+@dataclass
+class _Candidate:
+    key: list[int]
+    table: np.ndarray
+    plain_pf: np.ndarray
+    score: float
 
 
 # Fast Playfair decrypt via lookup table
@@ -82,27 +94,45 @@ def _build_decrypt_table(key: list[int]) -> np.ndarray:
     return table
 
 
-def _fast_decrypt_score(
-    ct_pairs: np.ndarray,
-    table: np.ndarray,
-    model: NgramModel,
-) -> tuple[float, np.ndarray]:
-    """Decrypt and score using precomputed table."""
+def _decode_pairs(ct_pairs: np.ndarray, table: np.ndarray) -> np.ndarray:
+    """Decode Playfair ciphertext pairs into 25-letter plaintext indices."""
     N = len(ct_pairs)
     packed = table[ct_pairs[:, 0], ct_pairs[:, 1]]
     pi = packed // 25
     pj = packed % 25
 
-    plain = np.empty(N * 2, dtype=np.int8)
-    plain[0::2] = pi.astype(np.int8)
-    plain[1::2] = pj.astype(np.int8)
+    plain_pf = np.empty(N * 2, dtype=np.int8)
+    plain_pf[0::2] = pi.astype(np.int8)
+    plain_pf[1::2] = pj.astype(np.int8)
+    return plain_pf
 
-    # Map Playfair's 25-letter alphabet (i/j merged) into model alpha indices.
-    alpha_idx = PF_TO_ALPHA_IDX[plain]
-    score = model.score_digraphs(alpha_idx)
-    if len(alpha_idx) >= 12:
-        score = 0.7 * score + 0.3 * model.score_adaptive(alpha_idx)
-    return score, plain
+
+def _score_playfair(plain: np.ndarray, model: NgramModel) -> float:
+    """Combined digraph and quadgram score for Playfair."""
+    digraph_score = model.score_digraphs(plain)
+    quad_score = model.score_quadgrams_fast(plain)
+    return 0.6 * digraph_score + 0.4 * quad_score
+
+
+def _evaluate_key(
+    key: list[int],
+    ct_pairs: np.ndarray,
+    model: NgramModel,
+    use_digraph_scoring: bool,
+) -> _Candidate:
+    table = _build_decrypt_table(key)
+    plain_pf = _decode_pairs(ct_pairs, table)
+    plain_alpha = PF_TO_ALPHA_IDX[plain_pf]
+    if use_digraph_scoring:
+        score = _score_playfair(plain_alpha, model)
+    else:
+        score = model.score_quadgrams_fast(plain_alpha)
+    return _Candidate(
+        key=list(key),
+        table=table,
+        plain_pf=plain_pf,
+        score=float(score),
+    )
 
 
 def _idx_to_str(plain: np.ndarray) -> str:
@@ -195,17 +225,35 @@ def crack_playfair(
     config: PlayfairConfig | None = None,
     callback: PlayfairCallback | None = None,
 ) -> PlayfairResult:
-    """Crack a Playfair cipher using MCMC with simulated annealing."""
+    """Crack a Playfair cipher using population-based hill climbing."""
     if config is None:
         config = PlayfairConfig()
 
     result = PlayfairResult()
 
     # Clean ciphertext
-    ct = ciphertext.replace("j", "i")
-    ct = "".join(ch for ch in ct if ch in PF_ALPHA)
-    if len(ct) % 2 != 0:
-        ct += "x"
+    ct_letters: list[str] = []
+    for ch in ciphertext.lower():
+        if ch == "j":
+            ct_letters.append("i")
+        elif ch in PF_ALPHA:
+            ct_letters.append(ch)
+    if len(ct_letters) < config.min_recommended_length:
+        warnings.warn(
+            (
+                "Playfair cracking is unreliable below "
+                f"{config.min_recommended_length} characters "
+                f"(got {len(ct_letters)}). Results may be poor."
+            ),
+            CryptexWarning,
+            stacklevel=2,
+        )
+
+    if len(ct_letters) % 2 != 0:
+        ct_letters.append("x")
+    if not ct_letters:
+        return result
+    ct = "".join(ct_letters)
 
     # Convert ciphertext to pairs of integer indices
     ct_pairs = np.array(
@@ -213,44 +261,91 @@ def crack_playfair(
         dtype=np.int8,
     )
 
+    pop_size = max(2, int(config.population_size))
+
     for chain_idx in range(config.num_restarts):
-        perm = list(range(25))
-        random.shuffle(perm)
-        key = perm
+        population: list[_Candidate] = []
+        for _ in range(pop_size):
+            key = list(range(25))
+            random.shuffle(key)
+            population.append(
+                _evaluate_key(
+                    key,
+                    ct_pairs,
+                    model,
+                    use_digraph_scoring=config.use_digraph_scoring,
+                )
+            )
 
-        table = _build_decrypt_table(key)
-        score, plain = _fast_decrypt_score(ct_pairs, table, model)
-
-        best_chain_score = score
-        temperature = config.t_start
+        temperature = float(config.t_start)
 
         for it in range(1, config.iterations + 1):
-            move_type, undo_info = _propose(key)
-            new_table = _build_decrypt_table(key)
-            new_score, new_plain = _fast_decrypt_score(ct_pairs, new_table, model)
+            ranked_idx = sorted(
+                range(len(population)),
+                key=lambda i: population[i].score,
+                reverse=True,
+            )
+            elite_count = max(2, pop_size // 5)
+            elite_idx = ranked_idx[:elite_count]
 
-            delta = new_score - score
-            if delta > 0 or random.random() < math.exp(delta / max(temperature, 1e-12)):
-                score = new_score
-                plain = new_plain
-                table = new_table
-            else:
-                _undo(key, move_type, undo_info)
+            parent_idx = random.choice(elite_idx)
+            parent = population[parent_idx]
 
-            if score > best_chain_score:
-                best_chain_score = score
+            child_key = list(parent.key)
+            for _ in range(1 + (1 if random.random() < 0.35 else 0)):
+                _propose(child_key)
 
-            if score > result.best_score:
-                result.best_score = score
-                result.best_key = "".join(PF_ALPHA[k] for k in key)
-                result.best_plaintext = _idx_to_str(plain)
+            child = _evaluate_key(
+                child_key,
+                ct_pairs,
+                model,
+                use_digraph_scoring=config.use_digraph_scoring,
+            )
 
-            if temperature > config.t_min:
-                temperature *= config.cooling_rate
+            delta = child.score - parent.score
+            accept = delta >= 0 or random.random() < math.exp(
+                delta / max(temperature, 1e-12)
+            )
+
+            if accept:
+                low_band = ranked_idx[elite_count:] if elite_count < pop_size else ranked_idx
+                replace_idx = random.choice(low_band)
+                population[replace_idx] = child
+
+            # Periodic elite injection: mutate top candidates into weakest slots.
+            if it % max(pop_size * 2, 20) == 0:
+                ranked_idx = sorted(
+                    range(len(population)),
+                    key=lambda i: population[i].score,
+                    reverse=True,
+                )
+                weakest = ranked_idx[-elite_count:]
+                for w_idx in weakest:
+                    seed = population[random.choice(elite_idx)].key.copy()
+                    _propose(seed)
+                    population[w_idx] = _evaluate_key(
+                        seed,
+                        ct_pairs,
+                        model,
+                        use_digraph_scoring=config.use_digraph_scoring,
+                    )
+
+            best = max(population, key=lambda c: c.score)
+            if best.score > result.best_score:
+                result.best_score = best.score
+                result.best_key = "".join(PF_ALPHA[k] for k in best.key)
+                result.best_plaintext = _idx_to_str(best.plain_pf)
 
             if callback and it % config.callback_interval == 0:
-                pt_str = _idx_to_str(plain)
-                callback(chain_idx, it, pt_str[:120], score, temperature)
+                callback(
+                    chain_idx,
+                    it,
+                    _idx_to_str(best.plain_pf)[:120],
+                    float(best.score),
+                    float(temperature),
+                )
+
+            temperature = max(config.t_min, temperature * config.cooling_rate)
 
         result.iterations_total += config.iterations
 

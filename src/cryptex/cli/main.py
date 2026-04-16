@@ -743,7 +743,7 @@ def _crack_substitution_genetic(
 
 
 def cmd_analyse(args: argparse.Namespace) -> None:
-    """Run MCMC with full convergence analysis and diagnostic plots."""
+    """Run MCMC with full convergence analysis and diagnostic JSON reports."""
     from cryptex.ciphers import SimpleSubstitution
     from cryptex.convergence import (
         chain_consensus,
@@ -804,7 +804,7 @@ def cmd_analyse(args: argparse.Namespace) -> None:
     console.print(f"  Chain agreement: {consensus['agreement_rate']:.1%}")
 
     out_dir = args.output or "."
-    console.print(f"\n[bold cyan]Generating diagnostic plots in {out_dir}/...")
+    console.print(f"\n[bold cyan]Generating diagnostic reports in {out_dir}/...")
 
     ref_score = None
     if original:
@@ -815,19 +815,19 @@ def cmd_analyse(args: argparse.Namespace) -> None:
         )
 
     p1 = plot_score_trajectory(
-        result, reference_score=ref_score, save_path=f"{out_dir}/convergence_plot.png"
+        result, reference_score=ref_score, save_path=f"{out_dir}/convergence_plot.json"
     )
     if p1:
         console.print(f"  [green]Saved: {p1}")
 
-    p2 = key_confidence_heatmap(result, save_path=f"{out_dir}/key_heatmap.png")
+    p2 = key_confidence_heatmap(result, save_path=f"{out_dir}/key_heatmap.json")
     if p2:
         console.print(f"  [green]Saved: {p2}")
 
     p3 = frequency_comparison_plot(
         ciphertext,
         result.best_plaintext,
-        save_path=f"{out_dir}/frequency_comparison.png",
+        save_path=f"{out_dir}/frequency_comparison.json",
     )
     if p3:
         console.print(f"  [green]Saved: {p3}")
@@ -902,6 +902,7 @@ def cmd_detect(args: argparse.Namespace) -> None:
     console.print(f"  IoC: {f.ioc:.4f}  (English ~0.0667)")
     console.print(f"  Entropy: {f.entropy:.3f} bits")
     console.print(f"  Chi-squared: {f.chi_squared:.4f}")
+    console.print(f"  Playfair score: {f.playfair_score:.3f}")
     console.print(f"  Length: {f.length}")
 
 
@@ -960,11 +961,11 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
     out = args.output or "."
     path = plot_benchmark(
         results,
-        save_path=f"{out}/benchmark.png",
+        save_path=f"{out}/benchmark.json",
         success_threshold=args.success_threshold,
     )
     if path:
-        console.print(f"\n[green]Saved benchmark plot: {path}")
+        console.print(f"\n[green]Saved benchmark report: {path}")
 
 
 # Phase 2: Phase transition
@@ -1017,9 +1018,9 @@ def cmd_phase_transition(args: argparse.Namespace) -> None:
     console.print(table)
 
     out = args.output or "."
-    path = plot_phase_transition(result, save_path=f"{out}/phase_transition.png")
+    path = plot_phase_transition(result, save_path=f"{out}/phase_transition.json")
     if path:
-        console.print(f"\n[green]Saved phase transition plot: {path}")
+        console.print(f"\n[green]Saved phase transition report: {path}")
 
 
 # Phase 2: Adversarial stress tests
@@ -1230,13 +1231,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_crack.add_argument("--file", "-f", type=str, help="Read ciphertext from file")
 
     p_analyse = sub.add_parser(
-        "analyse", help="Run MCMC with convergence analysis and diagnostic plots"
+        "analyse", help="Run MCMC with convergence analysis and diagnostic reports"
     )
     p_analyse.add_argument(
         "--text", "-t", type=str, help="Ciphertext (default: auto-generated demo)"
     )
     p_analyse.add_argument(
-        "--output", "-o", type=str, default=".", help="Output directory for plots"
+        "--output", "-o", type=str, default=".", help="Output directory for reports"
     )
 
     p_detect = sub.add_parser("detect", help="Detect cipher type from ciphertext")
