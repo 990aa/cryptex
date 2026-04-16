@@ -104,4 +104,3 @@ class TestHMMSolver:
             assert lls[i] >= lls[i - 1] - 1e-3, (
                 f"LL decreased at step {i}: {lls[i - 1]:.4f} → {lls[i]:.4f}"
             )
-

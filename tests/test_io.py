@@ -40,4 +40,3 @@ class TestAlphabetDiscovery:
         large = "".join(chr(33 + i) for i in range(50))
         assert likely_homophonic_cipher(small, threshold=40) is False
         assert likely_homophonic_cipher(large, threshold=40) is True
-

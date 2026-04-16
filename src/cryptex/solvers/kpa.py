@@ -41,9 +41,7 @@ def _check_substitution_pair(ct: str, pt: str) -> dict[str, str] | None:
 def _caesar_shift(ct: str, pt: str) -> int | None:
     if not ct:
         return None
-    shifts = {
-        (ord(c) - ord(p)) % 26 for c, p in zip(ct, pt)
-    }
+    shifts = {(ord(c) - ord(p)) % 26 for c, p in zip(ct, pt)}
     if len(shifts) == 1:
         return shifts.pop()
     return None

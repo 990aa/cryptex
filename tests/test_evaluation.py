@@ -145,4 +145,3 @@ class TestPlotFunctions:
         path = plot_benchmark(entries, save_path=str(tmp_path / "bench.png"))
         assert path is not None
         assert (tmp_path / "bench.png").exists()
-

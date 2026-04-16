@@ -7,7 +7,11 @@ from cryptex.solvers.kpa import KPAResult, known_plaintext_attack
 from cryptex.solvers.mcmc import MCMCConfig, MCMCResult, run_mcmc
 from cryptex.solvers.playfair import PlayfairConfig, PlayfairResult, crack_playfair
 from cryptex.solvers.railfence import RailFenceConfig, RailFenceResult, crack_railfence
-from cryptex.solvers.transposition import TranspositionConfig, TranspositionResult, crack_transposition
+from cryptex.solvers.transposition import (
+    TranspositionConfig,
+    TranspositionResult,
+    crack_transposition,
+)
 from cryptex.solvers.vigenere import VigenereConfig, VigenereResult, crack_vigenere
 
 __all__ = [

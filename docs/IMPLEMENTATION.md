@@ -1,6 +1,6 @@
 # Implementation Details 
 
-This document describes the current implementation in `src/cipher`.
+This document describes the current implementation in `src/cryptex`.
 
 ## 1) Architecture
 
@@ -20,8 +20,8 @@ Primary CLI data flow:
 - Default smoothing is interpolated Kneser-Ney (`smoothing="kneser_ney"`, `discount=0.75`).
 - Trains both space-aware (`A=27`) and no-space (`A=26`) variants.
 - Persisted model files:
-  - `src/cipher/data/ngram_model_v2.pkl`
-  - `src/cipher/data/ngram_model_nospace_v2.pkl`
+  - `src/cryptex/data/ngram_model_v2.pkl`
+  - `src/cryptex/data/ngram_model_nospace_v2.pkl`
 
 ### Performance paths
 
@@ -172,4 +172,5 @@ Latest validated state during this update:
 - Playfair generally requires longer text and more compute budget.
 - Symbol-only inputs are intentionally rejected for substitution cracking.
 - Homophonic ciphers are only heuristically flagged, not fully solved yet.
+
 

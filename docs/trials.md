@@ -1,6 +1,6 @@
-# Trial Log 
+# Trial Log (2026-04-16)
 
-This log captures the latest validation run for the codebase,
+This log captures the latest validation run for the cryptex v0.5.0 codebase,
 including custom-input experiments, edge cases, and observed failures.
 
 ## Environment
@@ -131,4 +131,5 @@ Status:
 - Lint/format/type/test checks: all passing.
 - CLI failure paths for file input and non-alphabetic text: cleanly handled.
 - Custom-input trials show strong performance on substitution/transposition with enough signal, and known weaknesses on short/noisy Playfair and Vigenere samples.
+
 

@@ -322,4 +322,3 @@ def frequency_comparison_plot(
     fig.savefig(save_path, dpi=150)
     plt.close(fig)
     return save_path
-

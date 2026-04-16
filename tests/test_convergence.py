@@ -137,4 +137,3 @@ class TestFrequencyComparisonPlot:
         )
         assert result is not None
         assert save_path.exists()
-

@@ -256,8 +256,10 @@ def _score_key_length(ciphertext: str, key_len: int, model: NgramModel) -> float
     pt_idx = text_to_indices(plaintext, include_space=model.include_space)
     ngram_score = model.score_adaptive(pt_idx)
 
-    return 0.3 * ioc_score + 0.1 * kasiski_score + 0.6 * (
-        ngram_score / max(len(pt_idx), 1)
+    return (
+        0.3 * ioc_score
+        + 0.1 * kasiski_score
+        + 0.6 * (ngram_score / max(len(pt_idx), 1))
     )
 
 
@@ -278,14 +280,16 @@ def crack_vigenere(
 
     max_len = min(max(config.max_key_length, 1), len(letters))
     length_scores = [
-        (kl, _score_key_length(letters, kl, model))
-        for kl in range(1, max_len + 1)
+        (kl, _score_key_length(letters, kl, model)) for kl in range(1, max_len + 1)
     ]
     length_scores.sort(key=lambda x: x[1], reverse=True)
 
     top_n = min(max(config.top_key_lengths, 1), len(length_scores))
     for rank, (kl, _combined_score) in enumerate(length_scores[:top_n], start=1):
-        shifts = [_solve_caesar_ngram(_get_subseq(letters, kl, pos), model) for pos in range(kl)]
+        shifts = [
+            _solve_caesar_ngram(_get_subseq(letters, kl, pos), model)
+            for pos in range(kl)
+        ]
         shifts = _refine_to_word_key(shifts, COMMON_KEY_WORDS)
 
         plaintext = _apply_vigenere_key(ciphertext, shifts)

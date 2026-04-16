@@ -310,4 +310,3 @@ def detect_cipher_type(ciphertext: str) -> DetectionResult:
         all_scores=scores,
         reasoning="; ".join(reasoning_parts),
     )
-

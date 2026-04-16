@@ -246,4 +246,3 @@ def run_stress_tests(
             callback(case.name, result)
 
     return results
-

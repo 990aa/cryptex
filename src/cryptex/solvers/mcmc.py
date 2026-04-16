@@ -447,7 +447,9 @@ def run_mcmc(
                 else:
                     i, j = random.sample(range(26), 2)
                     _update_inv_map_swap(replica.inv, replica.perm, i, j, offset)
-                    proposal_score = model.score_quadgrams_with_mapping(ct_idx, replica.inv)
+                    proposal_score = model.score_quadgrams_with_mapping(
+                        ct_idx, replica.inv
+                    )
 
                     delta = float(proposal_score - current_score)
                     accept = delta >= 0.0 or random.random() < math.exp(
@@ -613,4 +615,3 @@ def run_mcmc(
         result.swap_acceptance_rate = 0.0
 
     return result
-

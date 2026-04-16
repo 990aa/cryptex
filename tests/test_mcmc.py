@@ -169,4 +169,3 @@ class TestMCMCSolver:
         config = MCMCConfig(iterations=1000, num_restarts=1)
         result = run_mcmc(ct, trained_model, config)
         assert len(result.chain_scores) == 1
-

@@ -573,9 +573,7 @@ class NgramModel:
             raise ValueError("Invalid n-gram model file format")
         version = int(data.get("version", data.get("VERSION", -1)))
         if version != MODEL_VERSION:
-            raise ValueError(
-                f"Stale model version {version}; expected {MODEL_VERSION}"
-            )
+            raise ValueError(f"Stale model version {version}; expected {MODEL_VERSION}")
         m = cls(
             include_space=data.get("include_space", True),
             lambdas=data.get("lambdas", (0.05, 0.10, 0.25, 0.60)),
@@ -637,4 +635,3 @@ def get_model(force_retrain: bool = False, include_space: bool = True) -> NgramM
 
     model.save(model_path)
     return model
-

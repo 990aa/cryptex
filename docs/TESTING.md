@@ -100,3 +100,4 @@ Expected:
 - Playfair cracking is computationally expensive and may need longer runs for high quality output.
 - Benchmark and phase-transition commands are best run with small trial counts during rapid iteration.
 
+

@@ -511,4 +511,3 @@ def plot_benchmark(
     fig.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     return save_path
-

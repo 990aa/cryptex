@@ -180,4 +180,3 @@ class TestPrintResultBox:
             elapsed=1.23,
             extra_info={"Chains": "4", "Accuracy": "95%"},
         )
-

@@ -217,4 +217,3 @@ def run_genetic(
     result.best_score = float(fitness[best_idx])
 
     return result
-

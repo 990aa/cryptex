@@ -171,4 +171,3 @@ class TestMainDispatch:
         """Unknown subcommand should cause SystemExit from argparse."""
         with pytest.raises(SystemExit):
             main(["nonexistent_command"])
-
