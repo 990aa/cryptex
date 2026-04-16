@@ -6,6 +6,7 @@ Uses adaptive simulated annealing with optional parallel tempering
 
 from __future__ import annotations
 
+import dataclasses
 import math
 import random
 import string
@@ -119,6 +120,37 @@ class _ReplicaState:
 ProgressCallback = Callable[[int, int, str, str, float, float, float], None]
 
 
+# Plain-letter frequency order: etaoinshrdlcumwfgypbvkjxqz
+ENGLISH_FREQ_RANK = [
+    4,
+    19,
+    0,
+    14,
+    8,
+    13,
+    18,
+    7,
+    17,
+    3,
+    11,
+    2,
+    20,
+    12,
+    22,
+    5,
+    6,
+    24,
+    15,
+    1,
+    21,
+    10,
+    9,
+    23,
+    16,
+    25,
+]
+
+
 # Core solver
 
 
@@ -163,6 +195,21 @@ def _build_inv_map(perm: np.ndarray, include_space: bool, A: int) -> np.ndarray:
     return inv
 
 
+def _update_inv_map_swap(
+    inv: np.ndarray,
+    perm: np.ndarray,
+    i: int,
+    j: int,
+    offset: int,
+) -> None:
+    """O(1) inverse-map update after swapping perm[i] and perm[j]."""
+    ci_old = int(perm[i]) + offset
+    cj_old = int(perm[j]) + offset
+    inv[ci_old] = j + offset
+    inv[cj_old] = i + offset
+    perm[i], perm[j] = perm[j], perm[i]
+
+
 def _decode_with_inv(ct_idx: np.ndarray, inv: np.ndarray) -> np.ndarray:
     return inv[ct_idx].astype(np.int16, copy=False)
 
@@ -178,20 +225,56 @@ def _idx_to_text(plain_idx: np.ndarray, include_space: bool) -> str:
     return "".join(chars)
 
 
-def _order_crossover_perm(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-    """Order crossover (OX1) for permutation proposals."""
+def _order_crossover_vec(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
+    """Vectorized OX1 crossover for permutation proposals."""
     n = len(p1)
-    start, end = sorted(random.sample(range(n), 2))
+    start = np.random.randint(0, n)
+    end = np.random.randint(start + 1, n + 1)
     child = np.full(n, -1, dtype=np.int16)
     child[start:end] = p1[start:end]
-    used = set(int(v) for v in child[start:end])
-    fill = [int(v) for v in p2 if int(v) not in used]
-    fill_i = 0
-    for i in range(n):
-        if child[i] == -1:
-            child[i] = fill[fill_i]
-            fill_i += 1
+    mask = np.isin(p2, p1[start:end], invert=True)
+    remaining = p2[mask]
+    child[child == -1] = remaining
     return child
+
+
+def _frequency_init_perm(ct_idx: np.ndarray, include_space: bool) -> np.ndarray:
+    """Initialize permutation by aligning cipher frequencies to English."""
+    A = 27 if include_space else 26
+    offset = 1 if include_space else 0
+
+    counts = np.bincount(ct_idx, minlength=A).astype(float)
+    if include_space:
+        counts[0] = 0.0
+
+    cipher_rank = np.argsort(-counts[offset : offset + 26])
+    perm = np.arange(26, dtype=np.int16)
+    for rank_pos, cipher_letter in enumerate(cipher_rank):
+        perm[ENGLISH_FREQ_RANK[rank_pos]] = int(cipher_letter)
+    return perm
+
+
+def _auto_config(ciphertext_len: int, base: MCMCConfig) -> MCMCConfig:
+    """Scale MCMC settings by ciphertext length."""
+    cfg = dataclasses.replace(base)
+    if ciphertext_len < 30:
+        cfg.iterations = 100_000
+        cfg.num_restarts = 20
+        cfg.t_start = 20.0
+        cfg.cooling_rate = 0.99990
+        cfg.use_parallel_tempering = False
+    elif ciphertext_len < 80:
+        cfg.iterations = 80_000
+        cfg.num_restarts = 12
+        cfg.t_start = 40.0
+    elif ciphertext_len < 200:
+        cfg.iterations = 50_000
+        cfg.num_restarts = 8
+    else:
+        cfg.iterations = 30_000
+        cfg.num_restarts = 6
+        cfg.t_start = 60.0
+    return cfg
 
 
 def _temperature_ladder(config: MCMCConfig) -> np.ndarray:
@@ -263,13 +346,15 @@ def run_mcmc(
         result.best_plaintext = ""
         return result
 
+    config = _auto_config(len(ct_idx), config)
+
     threshold_reached = False
-    global_no_improve = 0
     total_swap_attempts = 0
     total_swap_accepts = 0
 
     include_space = model.include_space
     A = model.A
+    offset = 1 if include_space else 0
 
     best_perm_global: np.ndarray | None = None
 
@@ -284,7 +369,10 @@ def run_mcmc(
 
         replicas: list[_ReplicaState] = []
         for ridx in range(n_replicas):
-            perm = _random_perm()
+            if chain_idx == 0 and ridx == 0:
+                perm = _frequency_init_perm(ct_idx, include_space)
+            else:
+                perm = _random_perm()
             inv = _build_inv_map(perm, include_space, A)
             score = model.score_quadgrams_with_mapping(ct_idx, inv)
 
@@ -314,6 +402,8 @@ def run_mcmc(
 
         chain_best_score = max(r.best_score for r in replicas)
         chain_best_perm = np.array(replicas[0].best_perm, copy=True)
+        cold_best_score = -math.inf
+        cold_no_improve = 0
 
         for it in range(1, config.iterations + 1):
             if threshold_reached:
@@ -322,7 +412,6 @@ def run_mcmc(
             # Metropolis updates in each replica.
             for ridx, replica in enumerate(replicas):
                 temp = float(temperatures[ridx])
-                perm = np.array(replica.perm, copy=False)
                 current_score = replica.score
 
                 use_crossover = (
@@ -332,35 +421,48 @@ def run_mcmc(
 
                 if use_crossover:
                     assert best_perm_global is not None
-                    proposal_perm = _order_crossover_perm(perm, best_perm_global)
-                else:
-                    proposal_perm = perm.copy()
-                    i, j = random.sample(range(26), 2)
-                    proposal_perm[i], proposal_perm[j] = (
-                        proposal_perm[j],
-                        proposal_perm[i],
+                    proposal_perm = _order_crossover_vec(replica.perm, best_perm_global)
+                    proposal_inv = _build_inv_map(proposal_perm, include_space, A)
+                    proposal_score = model.score_quadgrams_with_mapping(
+                        ct_idx,
+                        proposal_inv,
                     )
 
-                proposal_inv = _build_inv_map(proposal_perm, include_space, A)
-                proposal_score = model.score_quadgrams_with_mapping(
-                    ct_idx, proposal_inv
-                )
+                    delta = float(proposal_score - current_score)
+                    accept = delta >= 0.0 or random.random() < math.exp(
+                        delta / max(temp, 1e-12)
+                    )
 
-                delta = float(proposal_score - current_score)
-                accept = delta >= 0.0 or random.random() < math.exp(
-                    delta / max(temp, 1e-12)
-                )
+                    replica.proposals += 1
+                    replica.proposals_window += 1
 
-                replica.proposals += 1
-                replica.proposals_window += 1
+                    if accept:
+                        replica.perm = proposal_perm
+                        replica.inv = proposal_inv
+                        replica.score = float(proposal_score)
+                        replica.accepts += 1
+                        replica.accepts_window += 1
+                        current_score = float(proposal_score)
+                else:
+                    i, j = random.sample(range(26), 2)
+                    _update_inv_map_swap(replica.inv, replica.perm, i, j, offset)
+                    proposal_score = model.score_quadgrams_with_mapping(ct_idx, replica.inv)
 
-                if accept:
-                    replica.perm = proposal_perm
-                    replica.inv = proposal_inv
-                    replica.score = float(proposal_score)
-                    replica.accepts += 1
-                    replica.accepts_window += 1
-                    current_score = float(proposal_score)
+                    delta = float(proposal_score - current_score)
+                    accept = delta >= 0.0 or random.random() < math.exp(
+                        delta / max(temp, 1e-12)
+                    )
+
+                    replica.proposals += 1
+                    replica.proposals_window += 1
+
+                    if accept:
+                        replica.score = float(proposal_score)
+                        replica.accepts += 1
+                        replica.accepts_window += 1
+                        current_score = float(proposal_score)
+                    else:
+                        _update_inv_map_swap(replica.inv, replica.perm, i, j, offset)
 
                 if current_score > replica.best_score:
                     replica.best_score = current_score
@@ -369,9 +471,6 @@ def run_mcmc(
                 if current_score > chain_best_score:
                     chain_best_score = current_score
                     chain_best_perm = np.array(replica.perm, copy=True)
-                    global_no_improve = 0
-                else:
-                    global_no_improve += 1
 
                 if current_score > result.best_score:
                     result.best_score = current_score
@@ -413,6 +512,14 @@ def run_mcmc(
                         r1.inv, r2.inv = r2.inv, r1.inv
                         r1.score, r2.score = r2.score, r1.score
 
+            cold_idx = int(np.argmin(temperatures))
+            cold = replicas[cold_idx]
+            if cold.score > cold_best_score:
+                cold_best_score = cold.score
+                cold_no_improve = 0
+            else:
+                cold_no_improve += 1
+
             # Adaptive annealing + baseline cooling.
             if it % max(config.adapt_interval, 1) == 0:
                 window_rates = []
@@ -438,8 +545,6 @@ def run_mcmc(
 
             # Periodic logging and callback from the coldest replica.
             if it % config.callback_interval == 0:
-                cold_idx = int(np.argmin(temperatures))
-                cold = replicas[cold_idx]
                 cold_perm = np.array(cold.perm, copy=False)
                 cold_inv = np.array(cold.inv, copy=False)
                 cold_pt = _idx_to_text(
@@ -468,7 +573,7 @@ def run_mcmc(
 
             if (
                 config.early_stop_patience
-                and global_no_improve >= config.early_stop_patience
+                and cold_no_improve >= config.early_stop_patience
             ):
                 result.early_stopped = True
                 break

@@ -38,7 +38,7 @@ else:  # pragma: no cover - optional dependency
 if TYPE_CHECKING:
     pass
 
-DATA_DIR = Path(__file__).resolve().parent / "data"
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 MODEL_FILE = DATA_DIR / "ngram_model_v2.pkl"
 MODEL_FILE_NOSPACE = DATA_DIR / "ngram_model_nospace_v2.pkl"
 MODEL_VERSION = 2
@@ -141,6 +141,8 @@ def text_to_indices(text: str, include_space: bool = True) -> np.ndarray:
 
 class NgramModel:
     """Character-level n-gram language model."""
+
+    VERSION = MODEL_VERSION
 
     def __init__(
         self,
@@ -453,6 +455,48 @@ class NgramModel:
         assert log_quad is not None
         return float(log_quad[idx[:-3], idx[1:-2], idx[2:-1], idx[3:]].sum())
 
+    def score_bigrams(self, idx: np.ndarray) -> float:
+        """Fast bigram chain score for short-text robustness."""
+        n = len(idx)
+        if n < 2:
+            return self.score_indices(idx)
+        log_bi = self.log_bi
+        assert log_bi is not None
+        return float(log_bi[idx[:-1], idx[1:]].sum())
+
+    def score_trigrams(self, idx: np.ndarray) -> float:
+        """Fast trigram chain score for medium-length text."""
+        n = len(idx)
+        if n < 3:
+            return self.score_bigrams(idx)
+        log_tri = self.log_tri
+        assert log_tri is not None
+        return float(log_tri[idx[:-2], idx[1:-1], idx[2:]].sum())
+
+    def score_adaptive(self, idx: np.ndarray) -> float:
+        """Length-adaptive language score to stabilize short ciphertext cracking."""
+        n = len(idx)
+        if n < 8:
+            return self.score_bigrams(idx)
+        if n < 25:
+            return 0.4 * self.score_bigrams(idx) + 0.6 * self.score_trigrams(idx)
+        if n < 60:
+            return self.score_trigrams(idx)
+        return self.score_quadgrams_fast(idx)
+
+    def score_digraphs(self, idx: np.ndarray) -> float:
+        """Digraph-pair score used by the Playfair solver."""
+        if len(idx) < 2:
+            return 0.0
+        log_bi = self.log_bi
+        assert log_bi is not None
+        a = idx[0::2]
+        b = idx[1::2]
+        n = min(len(a), len(b))
+        if n == 0:
+            return 0.0
+        return float(log_bi[a[:n], b[:n]].sum())
+
     def score_pentagrams_fast(self, idx: np.ndarray) -> float:
         """Fast pentagram-only scoring when a 5-gram table is available."""
         n = len(idx)
@@ -504,6 +548,7 @@ class NgramModel:
             pickle.dump(
                 {
                     "version": MODEL_VERSION,
+                    "VERSION": MODEL_VERSION,
                     "include_space": self.include_space,
                     "lambdas": self.lambdas,
                     "max_order": self.max_order,
@@ -524,6 +569,13 @@ class NgramModel:
         path = path or MODEL_FILE
         with open(path, "rb") as f:
             data = pickle.load(f)  # noqa: S301
+        if not isinstance(data, dict):
+            raise ValueError("Invalid n-gram model file format")
+        version = int(data.get("version", data.get("VERSION", -1)))
+        if version != MODEL_VERSION:
+            raise ValueError(
+                f"Stale model version {version}; expected {MODEL_VERSION}"
+            )
         m = cls(
             include_space=data.get("include_space", True),
             lambdas=data.get("lambdas", (0.05, 0.10, 0.25, 0.60)),
@@ -541,11 +593,23 @@ class NgramModel:
         return m
 
 
+def _load_model(path: Path) -> NgramModel | None:
+    """Load a model if it exists and matches the current version."""
+    if not path.exists():
+        return None
+    try:
+        return NgramModel.load(path)
+    except Exception:
+        return None
+
+
 def get_model(force_retrain: bool = False, include_space: bool = True) -> NgramModel:
     """Return a trained model, building it if necessary."""
     model_path = MODEL_FILE if include_space else MODEL_FILE_NOSPACE
-    if model_path.exists() and not force_retrain:
-        return NgramModel.load(model_path)
+    if not force_retrain:
+        cached = _load_model(model_path)
+        if cached is not None:
+            return cached
 
     from cryptex.corpus import download_corpus
 
