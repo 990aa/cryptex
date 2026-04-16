@@ -23,19 +23,21 @@ import argparse
 import os
 import sys
 import time
-from typing import Callable
+from typing import Callable, Protocol
 
 # Ensure stdout can handle Unicode (Rich box-drawing chars) on Windows
 if sys.platform == "win32":
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
-    if hasattr(sys.stdout, "reconfigure"):
+    stdout_reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if callable(stdout_reconfigure):
         try:
-            sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[call-non-callable]
+            stdout_reconfigure(encoding="utf-8")
         except Exception:
             pass
-    if hasattr(sys.stderr, "reconfigure"):
+    stderr_reconfigure = getattr(sys.stderr, "reconfigure", None)
+    if callable(stderr_reconfigure):
         try:
-            sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[call-non-callable]
+            stderr_reconfigure(encoding="utf-8")
         except Exception:
             pass
 
@@ -45,6 +47,11 @@ from rich.panel import Panel
 from rich.text import Text
 
 console = Console(force_terminal=True)
+
+
+class _ScoredResult(Protocol):
+    best_score: float
+    best_plaintext: str
 
 
 # ------------------------------------------------------------------
@@ -233,7 +240,7 @@ def _crack_auto(ciphertext_raw: str, model) -> None:  # noqa: ANN001
         "[bold cyan]Low confidence:[/bold cyan] running competitive solvers and selecting the best score."
     )
 
-    candidates: list[tuple[str, object, str, str, float]] = []
+    candidates: list[tuple[str, _ScoredResult, str, str, float]] = []
 
     ghost = ghost_map_text(ciphertext_raw)
     if ghost.core_text:

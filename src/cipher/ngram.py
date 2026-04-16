@@ -10,6 +10,7 @@ from __future__ import annotations
 import pickle
 import unicodedata
 import importlib
+import importlib.util
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -59,7 +60,7 @@ def _score_quadgrams_mapped_numba(
         return 0.0
 
     total = 0.0
-    for i in prange(n - 3):
+    for i in range(n - 3):
         a = int(inv_map[int(ciphertext_idx[i])])
         b = int(inv_map[int(ciphertext_idx[i + 1])])
         c = int(inv_map[int(ciphertext_idx[i + 2])])

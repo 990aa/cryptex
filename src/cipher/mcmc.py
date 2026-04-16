@@ -100,6 +100,19 @@ class MCMCResult:
     swap_acceptance_rate: float = 0.0
 
 
+@dataclass
+class _ReplicaState:
+    perm: np.ndarray
+    inv: np.ndarray
+    score: float
+    best_perm: np.ndarray
+    best_score: float
+    accepts: int = 0
+    proposals: int = 0
+    accepts_window: int = 0
+    proposals_window: int = 0
+
+
 # Callback signature
 
 # callback(chain_idx, iteration, current_key, current_plaintext, current_score, best_score, temperature)
@@ -269,24 +282,20 @@ def run_mcmc(
         )
         temperatures = _temperature_ladder(config)[:n_replicas]
 
-        replicas: list[dict[str, object]] = []
+        replicas: list[_ReplicaState] = []
         for ridx in range(n_replicas):
             perm = _random_perm()
             inv = _build_inv_map(perm, include_space, A)
             score = model.score_quadgrams_with_mapping(ct_idx, inv)
 
             replicas.append(
-                {
-                    "perm": perm,
-                    "inv": inv,
-                    "score": score,
-                    "best_perm": perm.copy(),
-                    "best_score": score,
-                    "accepts": 0,
-                    "proposals": 0,
-                    "accepts_window": 0,
-                    "proposals_window": 0,
-                }
+                _ReplicaState(
+                    perm=perm,
+                    inv=inv,
+                    score=float(score),
+                    best_perm=perm.copy(),
+                    best_score=float(score),
+                )
             )
 
             if score > result.best_score:
@@ -303,8 +312,8 @@ def run_mcmc(
                     config.top_k_candidates,
                 )
 
-        chain_best_score = max(float(r["best_score"]) for r in replicas)
-        chain_best_perm = np.array(replicas[0]["best_perm"], copy=True)
+        chain_best_score = max(r.best_score for r in replicas)
+        chain_best_perm = np.array(replicas[0].best_perm, copy=True)
 
         for it in range(1, config.iterations + 1):
             if threshold_reached:
@@ -313,8 +322,8 @@ def run_mcmc(
             # Metropolis updates in each replica.
             for ridx, replica in enumerate(replicas):
                 temp = float(temperatures[ridx])
-                perm = np.array(replica["perm"], copy=False)
-                current_score = float(replica["score"])
+                perm = np.array(replica.perm, copy=False)
+                current_score = replica.score
 
                 use_crossover = (
                     best_perm_global is not None
@@ -322,6 +331,7 @@ def run_mcmc(
                 )
 
                 if use_crossover:
+                    assert best_perm_global is not None
                     proposal_perm = _order_crossover_perm(perm, best_perm_global)
                 else:
                     proposal_perm = perm.copy()
@@ -341,34 +351,34 @@ def run_mcmc(
                     delta / max(temp, 1e-12)
                 )
 
-                replica["proposals"] = int(replica["proposals"]) + 1
-                replica["proposals_window"] = int(replica["proposals_window"]) + 1
+                replica.proposals += 1
+                replica.proposals_window += 1
 
                 if accept:
-                    replica["perm"] = proposal_perm
-                    replica["inv"] = proposal_inv
-                    replica["score"] = float(proposal_score)
-                    replica["accepts"] = int(replica["accepts"]) + 1
-                    replica["accepts_window"] = int(replica["accepts_window"]) + 1
+                    replica.perm = proposal_perm
+                    replica.inv = proposal_inv
+                    replica.score = float(proposal_score)
+                    replica.accepts += 1
+                    replica.accepts_window += 1
                     current_score = float(proposal_score)
 
-                if current_score > float(replica["best_score"]):
-                    replica["best_score"] = current_score
-                    replica["best_perm"] = np.array(replica["perm"], copy=True)
+                if current_score > replica.best_score:
+                    replica.best_score = current_score
+                    replica.best_perm = np.array(replica.perm, copy=True)
 
                 if current_score > chain_best_score:
                     chain_best_score = current_score
-                    chain_best_perm = np.array(replica["perm"], copy=True)
+                    chain_best_perm = np.array(replica.perm, copy=True)
                     global_no_improve = 0
                 else:
                     global_no_improve += 1
 
                 if current_score > result.best_score:
                     result.best_score = current_score
-                    best_perm_global = np.array(replica["perm"], copy=True)
+                    best_perm_global = np.array(replica.perm, copy=True)
                     result.best_key = _perm_to_key(best_perm_global)
                     pt_best = _idx_to_text(
-                        _decode_with_inv(ct_idx, np.array(replica["inv"], copy=False)),
+                        _decode_with_inv(ct_idx, np.array(replica.inv, copy=False)),
                         include_space,
                     )
                     result.best_plaintext = pt_best
@@ -390,8 +400,8 @@ def run_mcmc(
 
                     t1 = float(temperatures[ridx])
                     t2 = float(temperatures[ridx + 1])
-                    s1 = float(r1["score"])
-                    s2 = float(r2["score"])
+                    s1 = r1.score
+                    s2 = r2.score
 
                     total_swap_attempts += 1
                     swap_log_alpha = (1.0 / max(t1, 1e-12) - 1.0 / max(t2, 1e-12)) * (
@@ -399,20 +409,20 @@ def run_mcmc(
                     )
                     if math.log(max(random.random(), 1e-12)) < swap_log_alpha:
                         total_swap_accepts += 1
-                        r1["perm"], r2["perm"] = r2["perm"], r1["perm"]
-                        r1["inv"], r2["inv"] = r2["inv"], r1["inv"]
-                        r1["score"], r2["score"] = r2["score"], r1["score"]
+                        r1.perm, r2.perm = r2.perm, r1.perm
+                        r1.inv, r2.inv = r2.inv, r1.inv
+                        r1.score, r2.score = r2.score, r1.score
 
             # Adaptive annealing + baseline cooling.
             if it % max(config.adapt_interval, 1) == 0:
                 window_rates = []
                 for replica in replicas:
-                    pw = int(replica["proposals_window"])
-                    aw = int(replica["accepts_window"])
+                    pw = replica.proposals_window
+                    aw = replica.accepts_window
                     rate = aw / max(pw, 1)
                     window_rates.append(rate)
-                    replica["proposals_window"] = 0
-                    replica["accepts_window"] = 0
+                    replica.proposals_window = 0
+                    replica.accepts_window = 0
 
                 mean_rate = float(np.mean(window_rates)) if window_rates else 0.0
                 adapt_scale = math.exp(
@@ -430,22 +440,19 @@ def run_mcmc(
             if it % config.callback_interval == 0:
                 cold_idx = int(np.argmin(temperatures))
                 cold = replicas[cold_idx]
-                cold_perm = np.array(cold["perm"], copy=False)
-                cold_inv = np.array(cold["inv"], copy=False)
+                cold_perm = np.array(cold.perm, copy=False)
+                cold_inv = np.array(cold.inv, copy=False)
                 cold_pt = _idx_to_text(
                     _decode_with_inv(ct_idx, cold_inv), include_space
                 )
-                cold_score = float(cold["score"])
+                cold_score = cold.score
 
                 if config.track_trajectory:
                     result.score_trajectory.append(
                         (chain_idx * config.iterations + it, result.best_score)
                     )
 
-                acc_values = [
-                    int(rep["accepts"]) / max(int(rep["proposals"]), 1)
-                    for rep in replicas
-                ]
+                acc_values = [rep.accepts / max(rep.proposals, 1) for rep in replicas]
                 result.acceptance_rates.append(float(np.mean(acc_values)))
 
                 if callback:

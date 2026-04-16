@@ -164,7 +164,7 @@ def run_historical_challenge(
     cipher: HistoricalCipher,
     model=None,
     callback=None,
-) -> dict:
+) -> dict[str, object]:
     """Attempt to crack a historical cipher challenge.
 
     Returns a dict with the decryption result and accuracy (if known_plaintext is available).
@@ -173,7 +173,7 @@ def run_historical_challenge(
 
     from cipher.evaluation import symbol_error_rate
 
-    result = {
+    result: dict[str, object] = {
         "name": cipher.name,
         "cipher_type": cipher.cipher_type,
         "difficulty": cipher.difficulty,
@@ -232,9 +232,11 @@ def run_historical_challenge(
     result["time_seconds"] = elapsed
 
     # Compute accuracy if known plaintext exists
-    if cipher.known_plaintext and "decrypted" in result:
-        result["ser"] = symbol_error_rate(cipher.known_plaintext, result["decrypted"])
-        result["success"] = result["ser"] < 0.05
+    decrypted = result.get("decrypted")
+    if cipher.known_plaintext and isinstance(decrypted, str):
+        ser = symbol_error_rate(cipher.known_plaintext, decrypted)
+        result["ser"] = ser
+        result["success"] = ser < 0.05
     else:
         result["ser"] = None
         result["success"] = None
