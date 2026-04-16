@@ -3,7 +3,7 @@
 Provides:
 - Symbol Error Rate (SER) metric
 - Phase transition analysis (success rate vs ciphertext length)
-- Benchmarking against baselines (frequency analysis, genetic algorithm, random restarts)
+- Benchmarking against baselines (frequency analysis, genetic algorithm, hill-climb)
 """
 
 from __future__ import annotations
@@ -20,6 +20,36 @@ import numpy as np
 
 from cryptex.ciphers import SimpleSubstitution
 from cryptex.ngram import NgramModel, text_to_indices
+
+
+ENGLISH_FREQ_RANK = [
+    4,
+    19,
+    0,
+    14,
+    8,
+    13,
+    18,
+    7,
+    17,
+    3,
+    11,
+    2,
+    20,
+    12,
+    22,
+    5,
+    6,
+    24,
+    15,
+    1,
+    21,
+    10,
+    9,
+    23,
+    16,
+    25,
+]
 
 
 def _write_json_report(
@@ -220,44 +250,55 @@ def _frequency_analysis_baseline(ciphertext: str) -> str:
     return "".join(mapping.get(ch, ch) for ch in ciphertext)
 
 
-def _random_restart_baseline(
-    ciphertext: str, model: NgramModel, n_restarts: int = 50
+def _hillclimb_frequency_baseline(
+    ciphertext: str,
+    model: NgramModel,
+    iterations: int = 6000,
 ) -> str:
-    """Random key restarts without MCMC — just try random keys and keep the best."""
+    """Literature-style baseline: frequency init + greedy swap hill-climbing."""
     ct_idx = text_to_indices(
         "".join(ch for ch in ciphertext if ch in string.ascii_lowercase or ch == " "),
         model.include_space,
     )
+    if len(ct_idx) == 0:
+        return ""
+
     offset = 1 if model.include_space else 0
     A = model.A
 
-    best_score = -math.inf
-    best_key = None
+    counts = np.bincount(ct_idx, minlength=A).astype(np.float64)
+    if model.include_space:
+        counts[0] = 0.0
+    cipher_rank = np.argsort(-counts[offset : offset + 26])
 
-    for _ in range(n_restarts):
-        key = list(string.ascii_lowercase)
-        random.shuffle(key)
+    perm = np.arange(26, dtype=np.int16)
+    for rank_pos, cipher_letter in enumerate(cipher_rank):
+        perm[ENGLISH_FREQ_RANK[rank_pos]] = int(cipher_letter)
 
-        inv = np.zeros(A, dtype=np.int8)
+    def _build_inv_map(cur_perm: np.ndarray) -> np.ndarray:
+        inv = np.zeros(A, dtype=np.int16)
         if model.include_space:
             inv[0] = 0
-        for ci in range(26):
-            inv[ord(key[ci]) - ord("a") + offset] = ci + offset
-        plain_idx = inv[ct_idx]
-        score = model.score_quadgrams_fast(plain_idx)
+        for plain_i in range(26):
+            cipher_i = int(cur_perm[plain_i]) + offset
+            inv[cipher_i] = plain_i + offset
+        return inv
 
-        if score > best_score:
-            best_score = score
-            best_key = key
+    inv = _build_inv_map(perm)
+    best_score = model.score_quadgrams_with_mapping(ct_idx, inv)
 
-    # Decode best
-    if best_key is None:
-        return ciphertext
-    inv = np.zeros(A, dtype=np.int8)
-    if model.include_space:
-        inv[0] = 0
-    for ci in range(26):
-        inv[ord(best_key[ci]) - ord("a") + offset] = ci + offset
+    for _ in range(max(1, iterations)):
+        i, j = random.sample(range(26), 2)
+        perm[i], perm[j] = perm[j], perm[i]
+        trial_inv = _build_inv_map(perm)
+        trial_score = model.score_quadgrams_with_mapping(ct_idx, trial_inv)
+
+        if trial_score > best_score:
+            inv = trial_inv
+            best_score = trial_score
+        else:
+            perm[i], perm[j] = perm[j], perm[i]
+
     plain_idx = inv[ct_idx]
     chars = []
     for v in plain_idx:
@@ -276,7 +317,7 @@ def run_benchmark(
     success_threshold: float = 0.20,
     callback=None,
 ) -> list[BenchmarkEntry]:
-    """Benchmark MCMC vs Genetic Algorithm vs Frequency Analysis vs Random Restarts.
+    """Benchmark MCMC vs Genetic Algorithm vs Frequency Analysis vs hill-climb.
 
     Parameters
     ----------
@@ -317,7 +358,7 @@ def run_benchmark(
         "MCMC": BenchmarkEntry(method="MCMC", trials=trials),
         "Genetic": BenchmarkEntry(method="Genetic Algorithm", trials=trials),
         "Frequency": BenchmarkEntry(method="Frequency Analysis", trials=trials),
-        "Random": BenchmarkEntry(method="Random Restarts", trials=trials),
+        "Hillclimb": BenchmarkEntry(method="Hill Climb + Freq Init", trials=trials),
     }
 
     mcmc_config = MCMCConfig(
@@ -375,28 +416,32 @@ def run_benchmark(
         if callback:
             callback("Frequency", trial_idx, ser, elapsed)
 
-        # --- Random Restarts ---
+        # --- Hill Climb + Frequency Init ---
         t0 = time.time()
-        rand_result = _random_restart_baseline(ciphertext, model, n_restarts=1000)
+        hill_result = _hillclimb_frequency_baseline(
+            ciphertext,
+            model,
+            iterations=6000,
+        )
         elapsed = time.time() - t0
-        ser = symbol_error_rate(plaintext, rand_result)
-        rand_score = model.score_quadgrams_fast(
+        ser = symbol_error_rate(plaintext, hill_result)
+        hill_score = model.score_quadgrams_fast(
             text_to_indices(
                 "".join(
                     ch
-                    for ch in rand_result
+                    for ch in hill_result
                     if ch in string.ascii_lowercase or ch == " "
                 ),
                 model.include_space,
             )
         )
-        methods["Random"].avg_ser += ser
-        methods["Random"].avg_score += rand_score
-        methods["Random"].avg_time += elapsed
+        methods["Hillclimb"].avg_ser += ser
+        methods["Hillclimb"].avg_score += hill_score
+        methods["Hillclimb"].avg_time += elapsed
         if ser <= success_threshold:
-            methods["Random"].success_rate += 1
+            methods["Hillclimb"].success_rate += 1
         if callback:
-            callback("Random", trial_idx, ser, elapsed)
+            callback("Hill Climb + Freq Init", trial_idx, ser, elapsed)
 
     # Average
     results: list[BenchmarkEntry] = []

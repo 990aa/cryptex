@@ -46,7 +46,8 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.text import Text
 
-console = Console(force_terminal=True)
+console = Console()
+interactive_console = Console(stderr=True)
 
 
 class _ScoredResult(Protocol):
@@ -496,7 +497,7 @@ def _crack_substitution_mcmc(
     config = MCMCConfig()
     display = MCMCDisplay(config.num_restarts, config.iterations, ciphertext)
 
-    with Live(display.render(), console=console, refresh_per_second=8) as live:
+    with Live(display.render(), console=interactive_console, refresh_per_second=8) as live:
 
         def cb(chain_idx, iteration, cur_key, cur_pt, cur_score, best_score, temp):
             display.callback(
@@ -535,7 +536,7 @@ def _crack_substitution_hmm(
     config = HMMConfig()
     display = HMMDisplay()
 
-    with Live(display.render(), console=console, refresh_per_second=4) as live:
+    with Live(display.render(), console=interactive_console, refresh_per_second=4) as live:
 
         def cb(iteration, plaintext, ll):
             display.callback(iteration, plaintext, ll)
@@ -567,7 +568,7 @@ def _crack_vigenere(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     config = VigenereConfig()
     display = GenericDisplay("Vigenere Cracker")
 
-    with Live(display.render(), console=console, refresh_per_second=4) as live:
+    with Live(display.render(), console=interactive_console, refresh_per_second=4) as live:
 
         def cb(key, pt, score):
             display.update(f"Key={key}  score={score:,.1f}", pt, score)
@@ -596,7 +597,7 @@ def _crack_transposition(ciphertext: str, model, t0: float) -> None:  # noqa: AN
     config = TranspositionConfig()
     display = GenericDisplay("Transposition Cracker")
 
-    with Live(display.render(), console=console, refresh_per_second=4) as live:
+    with Live(display.render(), console=interactive_console, refresh_per_second=4) as live:
 
         def cb(chain, it, pt, score, temp):
             display.update(
@@ -627,7 +628,7 @@ def _crack_playfair(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     config = PlayfairConfig()
     display = GenericDisplay("Playfair Cracker")
 
-    with Live(display.render(), console=console, refresh_per_second=4) as live:
+    with Live(display.render(), console=interactive_console, refresh_per_second=4) as live:
 
         def cb(chain, it, pt, score, temp):
             display.update(
@@ -655,7 +656,7 @@ def _crack_affine(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     config = AffineConfig()
     display = GenericDisplay("Affine Solver")
 
-    with Live(display.render(), console=console, refresh_per_second=4) as live:
+    with Live(display.render(), console=interactive_console, refresh_per_second=4) as live:
 
         def cb(a, b, pt, score):
             display.update(f"a={a}, b={b}  score={score:,.1f}", pt, score)
@@ -681,7 +682,7 @@ def _crack_railfence(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     config = RailFenceConfig()
     display = GenericDisplay("Rail Fence Solver")
 
-    with Live(display.render(), console=console, refresh_per_second=4) as live:
+    with Live(display.render(), console=interactive_console, refresh_per_second=4) as live:
 
         def cb(rails, pt, score):
             display.update(f"rails={rails}  score={score:,.1f}", pt, score)
@@ -715,7 +716,7 @@ def _crack_substitution_genetic(
     config = GeneticConfig()
     display = GenericDisplay("Genetic Algorithm")
 
-    with Live(display.render(), console=console, refresh_per_second=4) as live:
+    with Live(display.render(), console=interactive_console, refresh_per_second=4) as live:
 
         def cb(gen: int, key: str, pt: str, score: float) -> None:
             display.update(f"Gen {gen}  score={score:,.1f}", pt, score)
@@ -782,7 +783,7 @@ def cmd_analyse(args: argparse.Namespace) -> None:
     display = MCMCDisplay(config.num_restarts, config.iterations, ciphertext)
     t0 = time.time()
 
-    with Live(display.render(), console=console, refresh_per_second=8) as live:
+    with Live(display.render(), console=interactive_console, refresh_per_second=8) as live:
 
         def cb(chain_idx, iteration, cur_key, cur_pt, cur_score, best_score, temp):
             display.callback(

@@ -17,7 +17,8 @@ from rich.table import Table
 from rich.text import Text
 
 
-console = Console(force_terminal=True)
+interactive_console = Console(stderr=True)
+console = Console()
 
 
 # =====================================================================
