@@ -1,7 +1,7 @@
 [project]
 name = "cipher"
-version = "0.3.0"
-description = "Unsupervised cipher cracking using MCMC, HMM, and genetic algorithms"
+version = "0.4.0"
+description = "High-performance classical cryptanalysis toolkit with adaptive MCMC, parallel tempering, Kneser-Ney 5-gram modeling, and robust dirty-text handling"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [

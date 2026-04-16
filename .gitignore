@@ -11,3 +11,4 @@ data/
 logs/
 *.txt
 .ruff_cache/
+.pytest_cache/

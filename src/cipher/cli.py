@@ -168,9 +168,10 @@ def cmd_crack(args: argparse.Namespace) -> None:
                 f"({len(alphabet)} symbols). This may be homophonic substitution."
             )
 
-        postprocess_plaintext = (
-            lambda pt, ghost=mapping: restore_ghost_text(pt, ghost)
-        )
+        def _postprocess_plaintext(pt: str, ghost=mapping) -> str:
+            return restore_ghost_text(pt, ghost)
+
+        postprocess_plaintext = _postprocess_plaintext
         ciphertext = ciphertext_core.lower()
     else:
         ciphertext = ciphertext.lower()
@@ -655,7 +656,9 @@ def _crack_substitution_genetic(
             display.update(f"Gen {gen}  score={score:,.1f}", pt, score)
             live.update(display.render())
 
-        result = _run_substitution_genetic(ciphertext, model, config=config, callback=cb)
+        result = _run_substitution_genetic(
+            ciphertext, model, config=config, callback=cb
+        )
 
     if postprocess_plaintext is not None:
         result.best_plaintext = postprocess_plaintext(result.best_plaintext)
@@ -853,6 +856,7 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
     model = get_model()
     console.print("[bold cyan]Running benchmark...")
     console.print(f"  Text length: {args.length}, Trials: {args.trials}")
+    console.print(f"  Success threshold (SER): <= {args.success_threshold:.1%}")
     console.print(
         "  Methods: MCMC, Genetic Algorithm, Frequency Analysis, Random Restarts\n"
     )
@@ -865,7 +869,12 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
         )
 
     results = run_benchmark(
-        model, corpus, text_length=args.length, trials=args.trials, callback=cb
+        model,
+        corpus,
+        text_length=args.length,
+        trials=args.trials,
+        success_threshold=args.success_threshold,
+        callback=cb,
     )
 
     table = Table(title="Benchmark Results", show_header=True)
@@ -886,7 +895,11 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
     console.print(table)
 
     out = args.output or "."
-    path = plot_benchmark(results, save_path=f"{out}/benchmark.png")
+    path = plot_benchmark(
+        results,
+        save_path=f"{out}/benchmark.png",
+        success_threshold=args.success_threshold,
+    )
     if path:
         console.print(f"\n[green]Saved benchmark plot: {path}")
 
@@ -1007,7 +1020,9 @@ def cmd_historical(_args: argparse.Namespace) -> None:
     from cipher.historical import get_historical_ciphers, run_historical_challenge
 
     ciphers = get_historical_ciphers()
-    console.print(f"[bold cyan]Running {len(ciphers)} historical cipher challenges...\n")
+    console.print(
+        f"[bold cyan]Running {len(ciphers)} historical cipher challenges...\n"
+    )
 
     for hc in ciphers:
         console.print(f"[bold]{hc.name}")
@@ -1072,7 +1087,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command")
 
-    p_train = sub.add_parser("train", help="Download corpus and train the language model")
+    p_train = sub.add_parser(
+        "train", help="Download corpus and train the language model"
+    )
     p_train.add_argument(
         "--force", action="store_true", help="Force re-download and re-train"
     )
@@ -1148,6 +1165,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_bench.add_argument(
         "--trials", type=int, default=3, help="Trials per method (default: 3)"
+    )
+    p_bench.add_argument(
+        "--success-threshold",
+        type=float,
+        default=0.20,
+        help="Success threshold on SER (default: 0.20)",
     )
     p_bench.add_argument(
         "--output", "-o", type=str, default=".", help="Output directory for plots"

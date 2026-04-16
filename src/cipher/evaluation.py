@@ -312,6 +312,7 @@ def run_benchmark(
     corpus: str,
     text_length: int = 300,
     trials: int = 5,
+    success_threshold: float = 0.20,
     callback=None,
 ) -> list[BenchmarkEntry]:
     """Benchmark MCMC vs Genetic Algorithm vs Frequency Analysis vs Random Restarts.
@@ -325,6 +326,8 @@ def run_benchmark(
         Length of each test ciphertext.
     trials : int
         Number of trials per method.
+    success_threshold : float
+        A trial counts as success when SER <= success_threshold.
     callback : callable, optional
         callback(method_name, trial, ser, elapsed)
 
@@ -370,7 +373,7 @@ def run_benchmark(
         methods["MCMC"].avg_ser += ser
         methods["MCMC"].avg_score += mcmc_result.best_score
         methods["MCMC"].avg_time += elapsed
-        if ser < 0.05:
+        if ser <= success_threshold:
             methods["MCMC"].success_rate += 1
         if callback:
             callback("MCMC", trial_idx, ser, elapsed)
@@ -383,7 +386,7 @@ def run_benchmark(
         methods["Genetic"].avg_ser += ser
         methods["Genetic"].avg_score += ga_result.best_score
         methods["Genetic"].avg_time += elapsed
-        if ser < 0.05:
+        if ser <= success_threshold:
             methods["Genetic"].success_rate += 1
         if callback:
             callback("Genetic", trial_idx, ser, elapsed)
@@ -406,7 +409,7 @@ def run_benchmark(
         methods["Frequency"].avg_ser += ser
         methods["Frequency"].avg_score += freq_score
         methods["Frequency"].avg_time += elapsed
-        if ser < 0.05:
+        if ser <= success_threshold:
             methods["Frequency"].success_rate += 1
         if callback:
             callback("Frequency", trial_idx, ser, elapsed)
@@ -429,18 +432,19 @@ def run_benchmark(
         methods["Random"].avg_ser += ser
         methods["Random"].avg_score += rand_score
         methods["Random"].avg_time += elapsed
-        if ser < 0.05:
+        if ser <= success_threshold:
             methods["Random"].success_rate += 1
         if callback:
             callback("Random", trial_idx, ser, elapsed)
 
     # Average
-    results = []
+    results: list[BenchmarkEntry] = []
+    n_trials = max(len(test_cases), 1)
     for entry in methods.values():
-        entry.avg_ser /= max(trials, 1)
-        entry.avg_score /= max(trials, 1)
-        entry.avg_time /= max(trials, 1)
-        entry.success_rate /= max(trials, 1)
+        entry.avg_ser /= n_trials
+        entry.avg_score /= n_trials
+        entry.avg_time /= n_trials
+        entry.success_rate /= n_trials
         results.append(entry)
 
     return results
@@ -449,6 +453,7 @@ def run_benchmark(
 def plot_benchmark(
     entries: list[BenchmarkEntry],
     save_path: str | Path | None = None,
+    success_threshold: float = 0.20,
 ) -> Path | None:
     """Plot benchmark comparison as a grouped bar chart."""
     import matplotlib
@@ -474,7 +479,7 @@ def plot_benchmark(
     # Success rate
     axes[1].bar(methods, success, color=colors[: len(methods)])
     axes[1].set_ylabel("Success Rate")
-    axes[1].set_title("Success Rate (SER < 5%)")
+    axes[1].set_title(f"Success Rate (SER <= {success_threshold:.0%})")
     axes[1].set_ylim(0, 1.05)
 
     # Time
@@ -484,6 +489,17 @@ def plot_benchmark(
 
     for ax in axes:
         ax.tick_params(axis="x", rotation=15)
+
+    # Annotate success-rate bars so zero/low values are still visible in output.
+    for bar, value in zip(axes[1].patches, success):
+        axes[1].text(
+            bar.get_x() + bar.get_width() / 2,
+            min(value + 0.02, 1.02),
+            f"{value:.0%}",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
 
     plt.suptitle("Benchmark: Cipher Cracking Methods", fontsize=14, y=1.02)
     plt.tight_layout()

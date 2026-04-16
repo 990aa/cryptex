@@ -1,3 +1,3 @@
-"""Unsupervised Cipher Cracking — MCMC & HMM approaches."""
+"""Cipher - high-performance classical cryptanalysis toolkit."""
 
-__version__ = "0.1.0"
+__version__ = "0.4.0"
