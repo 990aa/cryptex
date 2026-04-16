@@ -14,6 +14,7 @@ Level 5: Noisy / Partial ciphertext (wraps any cipher)
 
 from __future__ import annotations
 
+import math
 import random
 import string
 from typing import Any, Protocol
@@ -97,6 +98,117 @@ class Vigenere:
                 ki += 1
             else:
                 out.append(ch)  # pass through spaces etc.
+        return "".join(out)
+
+
+# =====================================================================
+# Affine Cipher
+# =====================================================================
+
+
+class Affine:
+    """Affine substitution cipher over a-z.
+
+    Key is a tuple ``(a, b)`` where gcd(a, 26) = 1.
+    """
+
+    name = "Affine"
+
+    @staticmethod
+    def _inv_mod(a: int, m: int = 26) -> int | None:
+        for x in range(1, m):
+            if (a * x) % m == 1:
+                return x
+        return None
+
+    @staticmethod
+    def random_key() -> tuple[int, int]:
+        valid_a = [a for a in range(26) if math.gcd(a, 26) == 1]
+        return random.choice(valid_a), random.randint(0, 25)
+
+    @classmethod
+    def encrypt(cls, plaintext: str, key: tuple[int, int]) -> str:
+        a, b = key
+        out: list[str] = []
+        for ch in plaintext:
+            if ch in string.ascii_lowercase:
+                x = ord(ch) - ord("a")
+                out.append(chr((a * x + b) % 26 + ord("a")))
+            else:
+                out.append(ch)
+        return "".join(out)
+
+    @classmethod
+    def decrypt(cls, ciphertext: str, key: tuple[int, int]) -> str:
+        a, b = key
+        inv = cls._inv_mod(a)
+        if inv is None:
+            return ciphertext
+        out: list[str] = []
+        for ch in ciphertext:
+            if ch in string.ascii_lowercase:
+                y = ord(ch) - ord("a")
+                out.append(chr((inv * (y - b)) % 26 + ord("a")))
+            else:
+                out.append(ch)
+        return "".join(out)
+
+
+# =====================================================================
+# Rail Fence Cipher
+# =====================================================================
+
+
+class RailFence:
+    """Rail Fence transposition cipher.
+
+    Key is the number of rails.
+    """
+
+    name = "Rail Fence"
+
+    @staticmethod
+    def random_key() -> int:
+        return random.randint(2, 8)
+
+    @staticmethod
+    def encrypt(plaintext: str, key: int) -> str:
+        rails = max(2, int(key))
+        lines = [[] for _ in range(rails)]
+        row = 0
+        step = 1
+        for ch in plaintext:
+            lines[row].append(ch)
+            row += step
+            if row == 0 or row == rails - 1:
+                step *= -1
+        return "".join("".join(line) for line in lines)
+
+    @staticmethod
+    def decrypt(ciphertext: str, key: int) -> str:
+        rails = max(2, int(key))
+        n = len(ciphertext)
+        pattern = []
+        row = 0
+        step = 1
+        for _ in range(n):
+            pattern.append(row)
+            row += step
+            if row == 0 or row == rails - 1:
+                step *= -1
+
+        counts = [pattern.count(r) for r in range(rails)]
+        slices: list[list[str]] = []
+        idx = 0
+        for c in counts:
+            slices.append(list(ciphertext[idx : idx + c]))
+            idx += c
+
+        offsets = [0] * rails
+        out: list[str] = []
+        for r in pattern:
+            out.append(slices[r][offsets[r]])
+            offsets[r] += 1
         return "".join(out)
 
     @staticmethod
@@ -324,6 +436,9 @@ ALL_CIPHERS: dict[str, Any] = {
     "vigenere": Vigenere(),
     "transposition": ColumnarTransposition(),
     "playfair": Playfair(),
+    "affine": Affine(),
+    "railfence": RailFence(),
+    "rail-fence": RailFence(),
 }
 
 

@@ -364,6 +364,12 @@ def _crack(
     elif cipher_name in ("playfair", "play"):
         _crack_playfair(ciphertext, model, t0)
 
+    elif cipher_name in ("affine",):
+        _crack_affine(ciphertext, model, t0)
+
+    elif cipher_name in ("railfence", "rail-fence", "rail"):
+        _crack_railfence(ciphertext, model, t0)
+
     elif cipher_name.startswith("noisy"):
         console.print("[dim]Noisy cipher detected - HMM handles noise naturally.")
         if method == "hmm":
@@ -457,6 +463,22 @@ def _run_playfair(ciphertext: str, _model, config=None, callback=None):  # noqa:
     if config is None:
         config = PlayfairConfig()
     return crack_playfair(ciphertext, model_ns, config, callback=callback)
+
+
+def _run_affine(ciphertext: str, model, config=None, callback=None):  # noqa: ANN001
+    from cryptex.solvers.affine import AffineConfig, crack_affine
+
+    if config is None:
+        config = AffineConfig()
+    return crack_affine(ciphertext, model, config, callback=callback)
+
+
+def _run_railfence(ciphertext: str, model, config=None, callback=None):  # noqa: ANN001
+    from cryptex.solvers.railfence import RailFenceConfig, crack_railfence
+
+    if config is None:
+        config = RailFenceConfig()
+    return crack_railfence(ciphertext, model, config, callback=callback)
 
 
 # Substitution - MCMC
@@ -619,6 +641,58 @@ def _crack_playfair(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     print_result_box(
         "Playfair",
         "MCMC",
+        result.best_key,
+        result.best_plaintext,
+        result.best_score,
+        elapsed,
+    )
+
+
+def _crack_affine(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
+    from cryptex.display import GenericDisplay, print_result_box
+    from cryptex.solvers.affine import AffineConfig
+
+    config = AffineConfig()
+    display = GenericDisplay("Affine Solver")
+
+    with Live(display.render(), console=console, refresh_per_second=4) as live:
+
+        def cb(a, b, pt, score):
+            display.update(f"a={a}, b={b}  score={score:,.1f}", pt, score)
+            live.update(display.render())
+
+        result = _run_affine(ciphertext, model, config=config, callback=cb)
+
+    elapsed = time.time() - t0
+    print_result_box(
+        "Affine",
+        "Brute Force + Adaptive Scoring",
+        result.best_key,
+        result.best_plaintext,
+        result.best_score,
+        elapsed,
+    )
+
+
+def _crack_railfence(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
+    from cryptex.display import GenericDisplay, print_result_box
+    from cryptex.solvers.railfence import RailFenceConfig
+
+    config = RailFenceConfig()
+    display = GenericDisplay("Rail Fence Solver")
+
+    with Live(display.render(), console=console, refresh_per_second=4) as live:
+
+        def cb(rails, pt, score):
+            display.update(f"rails={rails}  score={score:,.1f}", pt, score)
+            live.update(display.render())
+
+        result = _run_railfence(ciphertext, model, config=config, callback=cb)
+
+    elapsed = time.time() - t0
+    print_result_box(
+        "Rail Fence",
+        "Rail Sweep + Adaptive Scoring",
         result.best_key,
         result.best_plaintext,
         result.best_score,
@@ -1065,13 +1139,31 @@ def cmd_language(args: argparse.Namespace) -> None:
             console.print(f"  {lang}")
 
 
+def cmd_kpa(args: argparse.Namespace) -> None:
+    """Run known-plaintext attack analysis on aligned windows."""
+    from cryptex.solvers.kpa import known_plaintext_attack
+
+    ciphertext = (args.ciphertext or "").strip().lower()
+    known = (args.known or "").strip().lower()
+    if not ciphertext or not known:
+        console.print("[red]Error: both --ciphertext and --known are required.")
+        sys.exit(1)
+
+    result = known_plaintext_attack(ciphertext, known)
+    console.print("[bold cyan]Known-plaintext attack results")
+    console.print(f"  Substitution windows: {len(result.substitutions)}")
+    console.print(f"  Caesar shifts: {result.caesar_shifts}")
+    console.print(f"  Affine keys: {result.affine_keys}")
+    console.print(f"  Vigenere keys: {result.vigenere_key_guesses}")
+
+
 # Argument parser
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="cipher",
-        description="Unsupervised Cipher Cracker - MCMC, HMM, Genetic Algorithm and more",
+        prog="cryptex",
+        description="Cryptex - classical cryptanalysis toolkit with adaptive solvers",
     )
     sub = parser.add_subparsers(dest="command")
 
@@ -1092,6 +1184,8 @@ def build_parser() -> argparse.ArgumentParser:
             "vigenere",
             "transposition",
             "playfair",
+            "affine",
+            "railfence",
             "noisy-substitution",
         ],
         help="Cipher type (default: substitution)",
@@ -1114,6 +1208,8 @@ def build_parser() -> argparse.ArgumentParser:
             "vigenere",
             "transposition",
             "playfair",
+            "affine",
+            "railfence",
             "noisy-substitution",
         ],
         help="Cipher type",
@@ -1189,6 +1285,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_lang.add_argument("--text", "-t", type=str, help="Text for language detection")
     p_lang.add_argument("--force", action="store_true", help="Force re-train")
 
+    p_kpa = sub.add_parser("kpa", help="Known-plaintext attack helper")
+    p_kpa.add_argument("--ciphertext", type=str, required=True, help="Ciphertext")
+    p_kpa.add_argument("--known", type=str, required=True, help="Known plaintext")
+
     return parser
 
 
@@ -1216,6 +1316,8 @@ def main(argv: list[str] | None = None) -> None:
         cmd_historical(args)
     elif args.command == "language":
         cmd_language(args)
+    elif args.command == "kpa":
+        cmd_kpa(args)
     else:
         parser.print_help()
 
