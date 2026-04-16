@@ -20,9 +20,13 @@ Usage examples (all run through ``uv run``):
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
+import json
 import os
 import sys
+import threading
 import time
+from dataclasses import dataclass, field
 from typing import Callable, Protocol
 
 # Ensure stdout can handle Unicode (Rich box-drawing chars) on Windows
@@ -53,6 +57,126 @@ interactive_console = Console(stderr=True)
 class _ScoredResult(Protocol):
     best_score: float
     best_plaintext: str
+
+
+@dataclass
+class CrackOutput:
+    cipher: str
+    method: str
+    key: str
+    plaintext: str
+    score: float
+    elapsed: float
+    timed_out: bool = False
+    candidates: list[dict[str, object]] = field(default_factory=list)
+
+
+def _parse_known_pairs(values: list[str] | None) -> list[tuple[str, str]]:
+    pairs: list[tuple[str, str]] = []
+    for raw in values or []:
+        if ":" not in raw:
+            raise ValueError(
+                "Known pair must use '<plaintext_fragment>:<ciphertext_fragment>' format"
+            )
+        pt, ct = raw.split(":", 1)
+        if not pt or not ct:
+            raise ValueError("Known pair fragments must both be non-empty")
+        pairs.append((pt, ct))
+    return pairs
+
+
+def _run_with_timeout(
+    runner: Callable[[threading.Event | None], _ScoredResult],
+    timeout: float | None,
+) -> tuple[_ScoredResult, bool]:
+    if timeout is None:
+        return runner(None), False
+
+    stop_event = threading.Event()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+        future = ex.submit(runner, stop_event)
+        try:
+            return future.result(timeout=timeout), False
+        except concurrent.futures.TimeoutError:
+            stop_event.set()
+            try:
+                return future.result(timeout=10), True
+            except concurrent.futures.TimeoutError as exc:
+                raise TimeoutError(
+                    "Solver did not stop cleanly before timeout grace window"
+                ) from exc
+
+
+def _result_candidates(result: _ScoredResult, top_k: int) -> list[dict[str, object]]:
+    candidates: list[dict[str, object]] = []
+    if hasattr(result, "top_candidates"):
+        top_candidates = getattr(result, "top_candidates")
+        if isinstance(top_candidates, list):
+            for key, plaintext, score in top_candidates[: max(1, top_k)]:
+                candidates.append(
+                    {
+                        "key": str(key),
+                        "plaintext": str(plaintext),
+                        "score": float(score),
+                    }
+                )
+
+    if not candidates:
+        candidates.append(
+            {
+                "key": str(getattr(result, "best_key", "")),
+                "plaintext": str(getattr(result, "best_plaintext", "")),
+                "score": float(getattr(result, "best_score", float("-inf"))),
+            }
+        )
+    return candidates[: max(1, top_k)]
+
+
+def _emit_output(output: CrackOutput, output_format: str, top_k: int = 1) -> None:
+    from cryptex.cli.display import print_result_box
+
+    if output_format == "json":
+        payload = {
+            "cipher": output.cipher,
+            "method": output.method,
+            "key": output.key,
+            "score": output.score,
+            "elapsed_seconds": output.elapsed,
+            "timed_out": output.timed_out,
+            "plaintext": output.plaintext,
+            "candidates": output.candidates[: max(1, top_k)],
+        }
+        print(json.dumps(payload, ensure_ascii=True, indent=2))
+        return
+
+    if output_format == "plain":
+        if top_k <= 1 or len(output.candidates) <= 1:
+            print(output.plaintext)
+            return
+        for idx, cand in enumerate(output.candidates[: max(1, top_k)], start=1):
+            print(f"[{idx}] score={cand['score']:.2f} key={cand['key']}")
+            print(cand["plaintext"])
+            if idx < min(len(output.candidates), top_k):
+                print()
+        return
+
+    extra_info = {"Timed Out": "yes" if output.timed_out else "no"}
+    print_result_box(
+        output.cipher,
+        output.method,
+        output.key,
+        output.plaintext,
+        output.score,
+        output.elapsed,
+        extra_info=extra_info,
+    )
+
+    if top_k > 1 and len(output.candidates) > 1:
+        console.print("[bold cyan]Top candidates:[/bold cyan]")
+        for idx, cand in enumerate(output.candidates[: max(1, top_k)], start=1):
+            console.print(
+                f"  {idx}. score={float(cand['score']):,.2f} key={cand['key']}"
+            )
 
 
 # Sub-commands
@@ -127,15 +251,19 @@ def cmd_demo(args: argparse.Namespace) -> None:
 
 def cmd_crack(args: argparse.Namespace) -> None:
     """Crack user-supplied ciphertext."""
-    from cryptex.io import (
+    from cryptex.core.io import (
         discover_effective_alphabet,
         ghost_map_text,
         likely_homophonic_cipher,
         restore_ghost_text,
     )
-    from cryptex.ngram import get_model
+    from cryptex.core.ngram import get_model
+    from cryptex.languages import get_language_model
 
-    model = get_model()
+    if args.language == "english":
+        model = get_model(include_space=True)
+    else:
+        model = get_language_model(args.language, include_space=True)
 
     if args.text:
         ciphertext = args.text
@@ -155,8 +283,21 @@ def cmd_crack(args: argparse.Namespace) -> None:
         console.print("[red]Error: empty ciphertext.")
         sys.exit(1)
 
+    try:
+        known_pairs = _parse_known_pairs(args.known_pair)
+    except ValueError as exc:
+        console.print(f"[red]Error:[/red] {exc}")
+        sys.exit(1)
+
     if args.auto:
-        _crack_auto(ciphertext, model)
+        _crack_auto(
+            ciphertext,
+            model,
+            output_format=args.output_format,
+            timeout=args.timeout,
+            top_k=args.top_k,
+            language=args.language,
+        )
         return
 
     cipher_name = args.cipher.lower().strip()
@@ -186,13 +327,34 @@ def cmd_crack(args: argparse.Namespace) -> None:
     else:
         ciphertext = ciphertext.lower()
 
-    _crack(
+    if (
+        args.output_format == "terminal"
+        and args.timeout is None
+        and args.top_k <= 1
+        and not known_pairs
+    ):
+        _crack(
+            ciphertext,
+            args.cipher,
+            args.method,
+            model,
+            postprocess_plaintext=postprocess_plaintext,
+            language=args.language,
+        )
+        return
+
+    output = _crack_noninteractive(
         ciphertext,
         args.cipher,
         args.method,
         model,
+        timeout=args.timeout,
+        top_k=args.top_k,
         postprocess_plaintext=postprocess_plaintext,
+        known_pairs=known_pairs,
+        language=args.language,
     )
+    _emit_output(output, args.output_format, top_k=args.top_k)
 
 
 # Auto orchestration
@@ -328,6 +490,7 @@ def _crack(
     method: str,
     model,
     postprocess_plaintext: Callable[[str], str] | None = None,
+    language: str = "english",
 ) -> None:  # noqa: ANN001
     cipher_name = cipher_name.lower().strip()
     method = method.lower().strip()
@@ -363,7 +526,7 @@ def _crack(
         _crack_transposition(ciphertext, model, t0)
 
     elif cipher_name in ("playfair", "play"):
-        _crack_playfair(ciphertext, model, t0)
+        _crack_playfair(ciphertext, model, t0, language=language)
 
     elif cipher_name in ("affine",):
         _crack_affine(ciphertext, model, t0)
@@ -401,12 +564,21 @@ def _run_substitution_mcmc(  # noqa: ANN001
     model,
     config=None,
     callback=None,
+    stop_event: threading.Event | None = None,
+    fixed_mapping: dict[str, str] | None = None,
 ):
     from cryptex.mcmc import MCMCConfig, run_mcmc
 
     if config is None:
         config = MCMCConfig()
-    return run_mcmc(ciphertext, model, config, callback=callback)
+    return run_mcmc(
+        ciphertext,
+        model,
+        config,
+        callback=callback,
+        stop_event=stop_event,
+        fixed_mapping=fixed_mapping,
+    )
 
 
 def _run_substitution_hmm(  # noqa: ANN001
@@ -414,12 +586,21 @@ def _run_substitution_hmm(  # noqa: ANN001
     model,
     config=None,
     callback=None,
+    stop_event: threading.Event | None = None,
+    noise_rate: float = 0.05,
 ):
     from cryptex.hmm import HMMConfig, run_hmm
 
     if config is None:
         config = HMMConfig()
-    return run_hmm(ciphertext, model, config, callback=callback)
+    return run_hmm(
+        ciphertext,
+        model,
+        config,
+        callback=callback,
+        noise_rate=noise_rate,
+        stop_event=stop_event,
+    )
 
 
 def _run_substitution_genetic(  # noqa: ANN001
@@ -427,20 +608,39 @@ def _run_substitution_genetic(  # noqa: ANN001
     model,
     config=None,
     callback=None,
+    stop_event: threading.Event | None = None,
 ):
     from cryptex.genetic import GeneticConfig, run_genetic
 
     if config is None:
         config = GeneticConfig()
-    return run_genetic(ciphertext, model, config, callback=callback)
+    return run_genetic(
+        ciphertext,
+        model,
+        config,
+        callback=callback,
+        stop_event=stop_event,
+    )
 
 
-def _run_vigenere(ciphertext: str, model, config=None, callback=None):  # noqa: ANN001
+def _run_vigenere(
+    ciphertext: str,
+    model,
+    config=None,
+    callback=None,
+    stop_event: threading.Event | None = None,
+):  # noqa: ANN001
     from cryptex.vigenere_cracker import VigenereConfig, crack_vigenere
 
     if config is None:
         config = VigenereConfig()
-    return crack_vigenere(ciphertext, model, config, callback=callback)
+    return crack_vigenere(
+        ciphertext,
+        model,
+        config,
+        callback=callback,
+        stop_event=stop_event,
+    )
 
 
 def _run_transposition(  # noqa: ANN001
@@ -448,38 +648,86 @@ def _run_transposition(  # noqa: ANN001
     model,
     config=None,
     callback=None,
+    stop_event: threading.Event | None = None,
 ):
     from cryptex.transposition_cracker import TranspositionConfig, crack_transposition
 
     if config is None:
         config = TranspositionConfig()
-    return crack_transposition(ciphertext, model, config, callback=callback)
+    return crack_transposition(
+        ciphertext,
+        model,
+        config,
+        callback=callback,
+        stop_event=stop_event,
+    )
 
 
-def _run_playfair(ciphertext: str, _model, config=None, callback=None):  # noqa: ANN001
+def _run_playfair(
+    ciphertext: str,
+    _model,
+    config=None,
+    callback=None,
+    stop_event: threading.Event | None = None,
+    language: str = "english",
+):  # noqa: ANN001
+    from cryptex.languages import get_language_model
     from cryptex.ngram import get_model
     from cryptex.playfair_cracker import PlayfairConfig, crack_playfair
 
-    model_ns = get_model(include_space=False)
+    if language == "english":
+        model_ns = get_model(include_space=False)
+    else:
+        model_ns = get_language_model(language, include_space=False)
     if config is None:
         config = PlayfairConfig()
-    return crack_playfair(ciphertext, model_ns, config, callback=callback)
+    return crack_playfair(
+        ciphertext,
+        model_ns,
+        config,
+        callback=callback,
+        stop_event=stop_event,
+    )
 
 
-def _run_affine(ciphertext: str, model, config=None, callback=None):  # noqa: ANN001
+def _run_affine(
+    ciphertext: str,
+    model,
+    config=None,
+    callback=None,
+    stop_event: threading.Event | None = None,
+):  # noqa: ANN001
     from cryptex.solvers.affine import AffineConfig, crack_affine
 
     if config is None:
         config = AffineConfig()
-    return crack_affine(ciphertext, model, config, callback=callback)
+    return crack_affine(
+        ciphertext,
+        model,
+        config,
+        callback=callback,
+        stop_event=stop_event,
+    )
 
 
-def _run_railfence(ciphertext: str, model, config=None, callback=None):  # noqa: ANN001
+def _run_railfence(
+    ciphertext: str,
+    model,
+    config=None,
+    callback=None,
+    stop_event: threading.Event | None = None,
+):  # noqa: ANN001
     from cryptex.solvers.railfence import RailFenceConfig, crack_railfence
 
     if config is None:
         config = RailFenceConfig()
-    return crack_railfence(ciphertext, model, config, callback=callback)
+    return crack_railfence(
+        ciphertext,
+        model,
+        config,
+        callback=callback,
+        stop_event=stop_event,
+    )
 
 
 # Substitution - MCMC
