@@ -100,6 +100,19 @@ class Vigenere:
                 out.append(ch)  # pass through spaces etc.
         return "".join(out)
 
+    @staticmethod
+    def decrypt(ciphertext: str, key: str) -> str:
+        out: list[str] = []
+        ki = 0
+        for ch in ciphertext:
+            if ch in string.ascii_lowercase:
+                shift = ord(key[ki % len(key)]) - ord("a")
+                out.append(chr((ord(ch) - ord("a") - shift) % 26 + ord("a")))
+                ki += 1
+            else:
+                out.append(ch)
+        return "".join(out)
+
 
 # =====================================================================
 # Affine Cipher
@@ -209,19 +222,6 @@ class RailFence:
         for r in pattern:
             out.append(slices[r][offsets[r]])
             offsets[r] += 1
-        return "".join(out)
-
-    @staticmethod
-    def decrypt(ciphertext: str, key: str) -> str:
-        out: list[str] = []
-        ki = 0
-        for ch in ciphertext:
-            if ch in string.ascii_lowercase:
-                shift = ord(key[ki % len(key)]) - ord("a")
-                out.append(chr((ord(ch) - ord("a") - shift) % 26 + ord("a")))
-                ki += 1
-            else:
-                out.append(ch)
         return "".join(out)
 
 
