@@ -13,9 +13,9 @@ import string
 import time
 from dataclasses import dataclass
 
+from cryptex.analysis.evaluation import symbol_error_rate
 from cryptex.ciphers import SimpleSubstitution
-from cryptex.evaluation import symbol_error_rate
-from cryptex.ngram import NgramModel
+from cryptex.core.ngram import NgramModel
 
 
 @dataclass

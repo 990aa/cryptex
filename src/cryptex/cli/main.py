@@ -1,20 +1,20 @@
 """Command-line interface for the Unsupervised Cipher Cracker.
 
 Usage examples (all run through ``uv run``):
-    uv run cipher train                          # download corpus & train model
-    uv run cipher demo --cipher substitution     # encrypt & crack live demo
-    uv run cipher demo --method genetic          # demo with genetic algorithm
-    uv run cipher crack --cipher substitution --method mcmc --text "encrypted text"
-    uv run cipher crack --auto --file intercepted.txt
-    uv run cipher crack --cipher vigenere --text "vjg equkr dtqyp hqz"
-    uv run cipher analyse                        # convergence analysis with plots
-    uv run cipher detect --text "cipher text"    # detect cipher type
-    uv run cipher benchmark --trials 3           # benchmark MCMC vs GA vs baselines
-    uv run cipher phase-transition --trials 3    # success rate vs ciphertext length
-    uv run cipher stress-test                    # adversarial stress tests
-    uv run cipher historical                     # historical cipher challenges
-    uv run cipher language train --lang french   # train French language model
-    uv run cipher language detect --text "bonjour le monde"
+    uv run cryptex train                          # download corpus & train model
+    uv run cryptex demo --cipher substitution     # encrypt & crack live demo
+    uv run cryptex demo --method genetic          # demo with genetic algorithm
+    uv run cryptex crack --cipher substitution --method mcmc --text "encrypted text"
+    uv run cryptex crack --auto --file intercepted.txt
+    uv run cryptex crack --cipher vigenere --text "vjg equkr dtqyp hqz"
+    uv run cryptex analyse                        # convergence analysis with plots
+    uv run cryptex detect --text "cipher text"    # detect cipher type
+    uv run cryptex benchmark --trials 3           # benchmark MCMC vs GA vs baselines
+    uv run cryptex phase-transition --trials 3    # success rate vs ciphertext length
+    uv run cryptex stress-test                    # adversarial stress tests
+    uv run cryptex historical                     # historical cipher challenges
+    uv run cryptex language train --lang french   # train French language model
+    uv run cryptex language detect --text "bonjour le monde"
 """
 
 from __future__ import annotations
@@ -1324,3 +1324,4 @@ def main(argv: list[str] | None = None) -> None:
 
 if __name__ == "__main__":
     main()
+
