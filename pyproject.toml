@@ -1,6 +1,6 @@
 [project]
 name = "cipher"
-version = "0.2.0"
+version = "0.3.0"
 description = "Unsupervised cipher cracking using MCMC, HMM, and genetic algorithms"
 readme = "README.md"
 requires-python = ">=3.14"

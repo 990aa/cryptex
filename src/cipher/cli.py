@@ -5,6 +5,7 @@ Usage examples (all run through ``uv run``):
     uv run cipher demo --cipher substitution     # encrypt & crack live demo
     uv run cipher demo --method genetic          # demo with genetic algorithm
     uv run cipher crack --cipher substitution --method mcmc --text "encrypted text"
+    uv run cipher crack --auto --file intercepted.txt
     uv run cipher crack --cipher vigenere --text "vjg equkr dtqyp hqz"
     uv run cipher analyse                        # convergence analysis with plots
     uv run cipher detect --text "cipher text"    # detect cipher type
@@ -22,6 +23,7 @@ import argparse
 import os
 import sys
 import time
+from typing import Callable
 
 # Ensure stdout can handle Unicode (Rich box-drawing chars) on Windows
 if sys.platform == "win32":
@@ -121,6 +123,12 @@ def cmd_demo(args: argparse.Namespace) -> None:
 
 def cmd_crack(args: argparse.Namespace) -> None:
     """Crack user-supplied ciphertext."""
+    from cipher.io import (
+        discover_effective_alphabet,
+        ghost_map_text,
+        likely_homophonic_cipher,
+        restore_ghost_text,
+    )
     from cipher.ngram import get_model
 
     model = get_model()
@@ -135,12 +143,173 @@ def cmd_crack(args: argparse.Namespace) -> None:
         console.print("[dim]Reading ciphertext from stdin (Ctrl-D / Ctrl-Z to end)…")
         ciphertext = sys.stdin.read()
 
-    ciphertext = ciphertext.strip().lower()
+    ciphertext = ciphertext.strip()
     if not ciphertext:
         console.print("[red]Error: empty ciphertext.")
         sys.exit(1)
 
-    _crack(ciphertext, args.cipher, args.method, model)
+    if args.auto:
+        _crack_auto(ciphertext, model)
+        return
+
+    cipher_name = args.cipher.lower().strip()
+    postprocess_plaintext: Callable[[str], str] | None = None
+
+    if cipher_name in ("substitution", "simple", "sub") or cipher_name.startswith(
+        "noisy"
+    ):
+        mapping = ghost_map_text(ciphertext)
+        ciphertext_core = mapping.core_text
+        if not ciphertext_core:
+            console.print("[red]Error: no decipherable alphabetic content found.")
+            sys.exit(1)
+
+        alphabet = discover_effective_alphabet(ciphertext)
+        if likely_homophonic_cipher(ciphertext):
+            console.print(
+                "[yellow]Warning:[/yellow] Effective alphabet is large "
+                f"({len(alphabet)} symbols). This may be homophonic substitution."
+            )
+
+        postprocess_plaintext = (
+            lambda pt, ghost=mapping: restore_ghost_text(pt, ghost)
+        )
+        ciphertext = ciphertext_core.lower()
+    else:
+        ciphertext = ciphertext.lower()
+
+    _crack(
+        ciphertext,
+        args.cipher,
+        args.method,
+        model,
+        postprocess_plaintext=postprocess_plaintext,
+    )
+
+
+def _crack_auto(ciphertext_raw: str, model) -> None:  # noqa: ANN001
+    """Automatically detect cipher type and run one or more candidate solvers."""
+    from cipher.detector import detect_cipher_type
+    from cipher.display import print_result_box
+    from cipher.io import ghost_map_text, likely_homophonic_cipher, restore_ghost_text
+    from cipher.mcmc import MCMCConfig
+
+    detected = detect_cipher_type(ciphertext_raw.lower())
+    console.print(
+        f"[bold cyan]Auto-detect:[/bold cyan] {detected.predicted_type} "
+        f"({detected.confidence:.1%} confidence)"
+    )
+
+    if likely_homophonic_cipher(ciphertext_raw):
+        console.print(
+            "[yellow]Warning:[/yellow] symbol inventory suggests a possible "
+            "homophonic cipher; falling back to available classical solvers."
+        )
+
+    # High confidence: route directly.
+    if detected.confidence >= 0.80:
+        cipher_name = detected.predicted_type
+        if cipher_name == "substitution":
+            ghost = ghost_map_text(ciphertext_raw)
+            core = ghost.core_text.lower()
+            if not core:
+                console.print("[red]Error: no decipherable alphabetic content found.")
+                return
+            _crack(
+                core,
+                "substitution",
+                "mcmc",
+                model,
+                postprocess_plaintext=lambda pt, g=ghost: restore_ghost_text(pt, g),
+            )
+            return
+
+        _crack(ciphertext_raw.lower(), cipher_name, "mcmc", model)
+        return
+
+    console.print(
+        "[bold cyan]Low confidence:[/bold cyan] running competitive solvers and selecting the best score."
+    )
+
+    candidates: list[tuple[str, object, str, str, float]] = []
+
+    # Candidate 1: substitution MCMC with robust ghost mapping.
+    ghost = ghost_map_text(ciphertext_raw)
+    if ghost.core_text:
+        t0 = time.time()
+        sub_result = _run_substitution_mcmc(
+            ghost.core_text.lower(),
+            model,
+            config=MCMCConfig(
+                iterations=25_000,
+                num_restarts=4,
+                track_trajectory=False,
+                callback_interval=5000,
+            ),
+            callback=None,
+        )
+        sub_result.best_plaintext = restore_ghost_text(sub_result.best_plaintext, ghost)
+        candidates.append(
+            (
+                "Simple Substitution",
+                sub_result,
+                "MCMC (Adaptive + Tempering)",
+                sub_result.best_key,
+                time.time() - t0,
+            )
+        )
+
+    # Candidate 2: substitution HMM.
+    if ghost.core_text:
+        t0 = time.time()
+        hmm_result = _run_substitution_hmm(ghost.core_text.lower(), model)
+        hmm_result.best_plaintext = restore_ghost_text(hmm_result.best_plaintext, ghost)
+        candidates.append(
+            (
+                "Simple Substitution",
+                hmm_result,
+                "HMM/EM",
+                hmm_result.best_key,
+                time.time() - t0,
+            )
+        )
+
+    # Candidate 3: Vigenere.
+    t0 = time.time()
+    vig_result = _run_vigenere(ciphertext_raw.lower(), model)
+    candidates.append(
+        (
+            "Vigenère",
+            vig_result,
+            "IoC + Frequency Analysis",
+            vig_result.best_key,
+            time.time() - t0,
+        )
+    )
+
+    if not candidates:
+        console.print("[red]No viable candidates produced a result.")
+        return
+
+    winner_name, winner_result, winner_method, winner_key, elapsed = max(
+        candidates,
+        key=lambda entry: float(entry[1].best_score),
+    )
+
+    console.print("\n[bold green]Auto-selection complete.[/bold green]")
+    for label, candidate, method, _key, runtime in candidates:
+        console.print(
+            f"  {label:<22} {method:<28} score={candidate.best_score:,.2f}  time={runtime:.1f}s"
+        )
+
+    print_result_box(
+        winner_name,
+        winner_method,
+        str(winner_key),
+        winner_result.best_plaintext,
+        winner_result.best_score,
+        elapsed,
+    )
 
 
 # ------------------------------------------------------------------
@@ -148,7 +317,13 @@ def cmd_crack(args: argparse.Namespace) -> None:
 # ------------------------------------------------------------------
 
 
-def _crack(ciphertext: str, cipher_name: str, method: str, model) -> None:  # noqa: ANN001
+def _crack(
+    ciphertext: str,
+    cipher_name: str,
+    method: str,
+    model,
+    postprocess_plaintext: Callable[[str], str] | None = None,
+) -> None:  # noqa: ANN001
 
     cipher_name = cipher_name.lower().strip()
     method = method.lower().strip()
@@ -157,11 +332,26 @@ def _crack(ciphertext: str, cipher_name: str, method: str, model) -> None:  # no
     # ----- Simple Substitution -----
     if cipher_name in ("substitution", "simple", "sub"):
         if method == "hmm":
-            _crack_substitution_hmm(ciphertext, model, t0)
+            _crack_substitution_hmm(
+                ciphertext,
+                model,
+                t0,
+                postprocess_plaintext=postprocess_plaintext,
+            )
         elif method == "genetic":
-            _crack_substitution_genetic(ciphertext, model, t0)
+            _crack_substitution_genetic(
+                ciphertext,
+                model,
+                t0,
+                postprocess_plaintext=postprocess_plaintext,
+            )
         else:
-            _crack_substitution_mcmc(ciphertext, model, t0)
+            _crack_substitution_mcmc(
+                ciphertext,
+                model,
+                t0,
+                postprocess_plaintext=postprocess_plaintext,
+            )
 
     # ----- Vigenère -----
     elif cipher_name in ("vigenere", "vigenère", "vig"):
@@ -179,10 +369,20 @@ def _crack(ciphertext: str, cipher_name: str, method: str, model) -> None:  # no
     elif cipher_name.startswith("noisy"):
         console.print("[dim]Noisy cipher detected — HMM handles noise naturally.")
         if method == "hmm":
-            _crack_substitution_hmm(ciphertext, model, t0)
+            _crack_substitution_hmm(
+                ciphertext,
+                model,
+                t0,
+                postprocess_plaintext=postprocess_plaintext,
+            )
         else:
             # Default to MCMC even for noisy (still works, just less robust)
-            _crack_substitution_mcmc(ciphertext, model, t0)
+            _crack_substitution_mcmc(
+                ciphertext,
+                model,
+                t0,
+                postprocess_plaintext=postprocess_plaintext,
+            )
 
     else:
         console.print(f"[red]Unknown cipher type: {cipher_name}")
