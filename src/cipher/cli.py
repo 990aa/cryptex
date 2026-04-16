@@ -1039,16 +1039,25 @@ def cmd_historical(_args: argparse.Namespace) -> None:
         result = run_historical_challenge(hc)
 
         if "error" in result:
-            console.print(f"  [red]Error: {result['error']}")
+            console.print(f"  [red]Error: {result.get('error')}")
         else:
-            console.print(
-                f"  Time: {result['time_seconds']:.1f}s, "
-                f"Score: {result.get('score', 'N/A')}"
+            time_seconds = result.get("time_seconds")
+            score = result.get("score")
+            time_text = (
+                f"{time_seconds:.1f}s"
+                if isinstance(time_seconds, (int, float))
+                else "N/A"
             )
-            if result.get("ser") is not None:
-                status = "[green]PASS" if result["success"] else "[red]FAIL"
-                console.print(f"  SER: {result['ser']:.1%} {status}")
-            console.print(f"  Decrypted: {result.get('decrypted', '')[:80]}...")
+            console.print(
+                f"  Time: {time_text}, Score: {score if score is not None else 'N/A'}"
+            )
+            ser = result.get("ser")
+            if isinstance(ser, (int, float)):
+                status = "[green]PASS" if bool(result.get("success")) else "[red]FAIL"
+                console.print(f"  SER: {ser:.1%} {status}")
+            decrypted = result.get("decrypted")
+            preview = decrypted[:80] if isinstance(decrypted, str) else ""
+            console.print(f"  Decrypted: {preview}...")
         console.print()
 
 

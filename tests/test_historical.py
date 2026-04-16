@@ -78,7 +78,9 @@ class TestRunHistoricalChallenge:
         result = run_historical_challenge(caesar)
         assert "decrypted" in result
         assert "time_seconds" in result
-        assert result["time_seconds"] > 0
+        time_seconds = result.get("time_seconds")
+        assert isinstance(time_seconds, (int, float))
+        assert time_seconds > 0
 
     @pytest.mark.timeout(120)
     def test_returns_required_keys(self) -> None:
