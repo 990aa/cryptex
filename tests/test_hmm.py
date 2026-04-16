@@ -10,7 +10,7 @@ import pytest
 
 class TestHMMConfig:
     def test_defaults(self) -> None:
-        from cryptex.hmm import HMMConfig
+        from cryptex.solvers.hmm import HMMConfig
 
         c = HMMConfig()
         assert c.max_iter == 100
@@ -20,7 +20,7 @@ class TestHMMConfig:
 
 class TestHMMResult:
     def test_defaults(self) -> None:
-        from cryptex.hmm import HMMResult
+        from cryptex.solvers.hmm import HMMResult
 
         r = HMMResult()
         assert r.best_key == ""
@@ -30,7 +30,7 @@ class TestHMMResult:
 
 class TestHMMHelpers:
     def test_logsumexp_matches_numpy(self) -> None:
-        from cryptex.hmm import _logsumexp
+        from cryptex.solvers.hmm import _logsumexp
 
         arr = np.array([-1.0, -2.0, -3.0])
         result = _logsumexp(arr)
@@ -38,14 +38,14 @@ class TestHMMHelpers:
         assert abs(float(result) - expected) < 1e-10
 
     def test_logsumexp_axis(self) -> None:
-        from cryptex.hmm import _logsumexp
+        from cryptex.solvers.hmm import _logsumexp
 
         arr = np.array([[-1.0, -2.0], [-3.0, -4.0]])
         result = _logsumexp(arr, axis=1)
         assert result.shape == (2,)
 
     def test_normalise_log(self) -> None:
-        from cryptex.hmm import _normalise_log
+        from cryptex.solvers.hmm import _normalise_log
 
         log_probs = np.array([-1.0, -2.0, -3.0])
         result = _normalise_log(log_probs)
@@ -53,13 +53,13 @@ class TestHMMHelpers:
         assert abs(probs.sum() - 1.0) < 1e-6
 
     def test_english_frequency_rank_covers_all_symbols(self) -> None:
-        from cryptex.hmm import _english_frequency_rank
+        from cryptex.solvers.hmm import _english_frequency_rank
 
         rank = _english_frequency_rank(26)
         assert sorted(rank.tolist()) == list(range(26))
 
     def test_init_emission_from_frequency_normalises_rows(self) -> None:
-        from cryptex.hmm import _init_emission_from_frequency
+        from cryptex.solvers.hmm import _init_emission_from_frequency
 
         obs = np.array([0, 0, 1, 1, 1, 2, 3, 4], dtype=np.int32)
         log_emit = _init_emission_from_frequency(obs, A=5, noise_rate=0.05)
@@ -72,7 +72,7 @@ class TestHMMSolver:
     @pytest.mark.timeout(60)
     def test_runs_and_returns(self, trained_model) -> None:
         from cryptex.ciphers import SimpleSubstitution
-        from cryptex.hmm import HMMConfig, run_hmm
+        from cryptex.solvers.hmm import HMMConfig, run_hmm
 
         pt = "the quick brown fox jumps"
         key = SimpleSubstitution.random_key()
@@ -88,7 +88,7 @@ class TestHMMSolver:
     @pytest.mark.timeout(60)
     def test_callback_invoked(self, trained_model) -> None:
         from cryptex.ciphers import SimpleSubstitution
-        from cryptex.hmm import HMMConfig, run_hmm
+        from cryptex.solvers.hmm import HMMConfig, run_hmm
 
         pt = "hello world test"
         ct = SimpleSubstitution.encrypt(pt, SimpleSubstitution.random_key())
@@ -106,7 +106,7 @@ class TestHMMSolver:
     def test_log_likelihood_non_decreasing(self, trained_model) -> None:
         """EM should generally not decrease the log-likelihood."""
         from cryptex.ciphers import SimpleSubstitution
-        from cryptex.hmm import HMMConfig, run_hmm
+        from cryptex.solvers.hmm import HMMConfig, run_hmm
 
         pt = "the cat sat on the mat by the hat"
         ct = SimpleSubstitution.encrypt(pt, SimpleSubstitution.random_key())
@@ -119,3 +119,4 @@ class TestHMMSolver:
             assert lls[i] >= lls[i - 1] - 1e-3, (
                 f"LL decreased at step {i}: {lls[i - 1]:.4f} → {lls[i]:.4f}"
             )
+

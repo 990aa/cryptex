@@ -10,7 +10,7 @@ import pytest
 
 class TestMCMCConfig:
     def test_default_values(self) -> None:
-        from cryptex.mcmc import MCMCConfig
+        from cryptex.solvers.mcmc import MCMCConfig
 
         c = MCMCConfig()
         assert c.iterations == 50_000
@@ -23,7 +23,7 @@ class TestMCMCConfig:
         assert c.acceptance_window == 1000
 
     def test_custom_values(self) -> None:
-        from cryptex.mcmc import MCMCConfig
+        from cryptex.solvers.mcmc import MCMCConfig
 
         c = MCMCConfig(iterations=100, num_restarts=2, t_start=10.0)
         assert c.iterations == 100
@@ -32,7 +32,7 @@ class TestMCMCConfig:
 
 class TestMCMCResult:
     def test_default_values(self) -> None:
-        from cryptex.mcmc import MCMCResult
+        from cryptex.solvers.mcmc import MCMCResult
 
         r = MCMCResult()
         assert r.best_key == ""
@@ -46,13 +46,13 @@ class TestMCMCResult:
 
 class TestMCMCHelpers:
     def test_apply_key_identity(self) -> None:
-        from cryptex.mcmc import _apply_key
+        from cryptex.solvers.mcmc import _apply_key
 
         result = _apply_key("hello", string.ascii_lowercase)
         assert result == "hello"
 
     def test_apply_key_atbash(self) -> None:
-        from cryptex.mcmc import _apply_key
+        from cryptex.solvers.mcmc import _apply_key
 
         # Key maps a→z, b→y, etc. But _apply_key maps key[i] → ascii[i]
         key = "zyxwvutsrqponmlkjihgfedcba"
@@ -60,7 +60,7 @@ class TestMCMCHelpers:
         assert result == "zyx"
 
     def test_swap_key_modifies_list(self) -> None:
-        from cryptex.mcmc import _swap_key
+        from cryptex.solvers.mcmc import _swap_key
 
         key = list(string.ascii_lowercase)
         original = key.copy()
@@ -69,7 +69,7 @@ class TestMCMCHelpers:
         assert key[j] == original[i]
 
     def test_random_key_is_permutation(self) -> None:
-        from cryptex.mcmc import _random_key
+        from cryptex.solvers.mcmc import _random_key
 
         key = _random_key()
         assert sorted(key) == list(string.ascii_lowercase)
@@ -81,7 +81,7 @@ class TestMCMCSolver:
     def test_solves_simple_cipher(self, trained_model, sample_plaintext) -> None:
         """MCMC should crack a substitution cipher on a ~100-char text."""
         from cryptex.ciphers import SimpleSubstitution
-        from cryptex.mcmc import MCMCConfig, run_mcmc
+        from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
 
         key = SimpleSubstitution.random_key()
         ct = SimpleSubstitution.encrypt(sample_plaintext, key)
@@ -97,7 +97,7 @@ class TestMCMCSolver:
     @pytest.mark.timeout(60)
     def test_callback_invoked(self, trained_model, sample_plaintext) -> None:
         from cryptex.ciphers import SimpleSubstitution
-        from cryptex.mcmc import MCMCConfig, run_mcmc
+        from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
 
         key = SimpleSubstitution.random_key()
         ct = SimpleSubstitution.encrypt(sample_plaintext, key)
@@ -114,7 +114,7 @@ class TestMCMCSolver:
     @pytest.mark.timeout(60)
     def test_early_stopping(self, trained_model) -> None:
         from cryptex.ciphers import SimpleSubstitution
-        from cryptex.mcmc import MCMCConfig, run_mcmc
+        from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
 
         pt = "the quick brown fox jumps over the lazy dog and some more text here"
         key = SimpleSubstitution.random_key()
@@ -133,7 +133,7 @@ class TestMCMCSolver:
     @pytest.mark.timeout(60)
     def test_trajectory_tracking(self, trained_model, sample_plaintext) -> None:
         from cryptex.ciphers import SimpleSubstitution
-        from cryptex.mcmc import MCMCConfig, run_mcmc
+        from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
 
         key = SimpleSubstitution.random_key()
         ct = SimpleSubstitution.encrypt(sample_plaintext, key)
@@ -148,7 +148,7 @@ class TestMCMCSolver:
     @pytest.mark.timeout(60)
     def test_chain_keys_stored(self, trained_model, sample_plaintext) -> None:
         from cryptex.ciphers import SimpleSubstitution
-        from cryptex.mcmc import MCMCConfig, run_mcmc
+        from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
 
         key = SimpleSubstitution.random_key()
         ct = SimpleSubstitution.encrypt(sample_plaintext, key)
@@ -162,7 +162,7 @@ class TestMCMCSolver:
     @pytest.mark.timeout(30)
     def test_single_chain(self, trained_model) -> None:
         from cryptex.ciphers import SimpleSubstitution
-        from cryptex.mcmc import MCMCConfig, run_mcmc
+        from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
 
         pt = "a short text for testing"
         ct = SimpleSubstitution.encrypt(pt, SimpleSubstitution.random_key())
@@ -175,7 +175,7 @@ class TestMCMCSolver:
         self, trained_model, sample_plaintext
     ) -> None:
         from cryptex.ciphers import SimpleSubstitution
-        from cryptex.mcmc import MCMCConfig, run_mcmc
+        from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
 
         key = SimpleSubstitution.random_key()
         ct = SimpleSubstitution.encrypt(sample_plaintext, key)
@@ -186,3 +186,4 @@ class TestMCMCSolver:
 
         assert r1.best_score == r2.best_score
         assert r1.best_key == r2.best_key
+

@@ -103,3 +103,4 @@ def crack_railfence(
             result.best_plaintext = pt
 
     return result
+

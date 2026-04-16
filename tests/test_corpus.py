@@ -64,3 +64,4 @@ class TestCorpusEdgeCases:
         text = "Just plain text without markers."
         result = _strip_gutenberg_header_footer(text)
         assert "plain text" in result.lower()
+

@@ -280,3 +280,4 @@ class TestGetEngine:
 
         with pytest.raises(ValueError):
             get_engine("nonexistent_cipher")
+

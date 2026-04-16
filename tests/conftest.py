@@ -8,7 +8,7 @@ import pytest
 @pytest.fixture(scope="session")
 def trained_model():
     """Return a fully trained NgramModel (with space). Cached for the session."""
-    from cryptex.ngram import get_model
+    from cryptex.core.ngram import get_model
 
     return get_model(include_space=True)
 
@@ -16,7 +16,7 @@ def trained_model():
 @pytest.fixture(scope="session")
 def trained_model_nospace():
     """Return a trained NgramModel without space. Cached for the session."""
-    from cryptex.ngram import get_model
+    from cryptex.core.ngram import get_model
 
     return get_model(include_space=False)
 
@@ -47,3 +47,4 @@ def long_plaintext() -> str:
         "surrounding families that he is considered as the rightful property "
         "of some one or other of their daughters"
     )
+

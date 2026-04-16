@@ -16,7 +16,7 @@ from typing import Callable
 
 import numpy as np
 
-from cryptex.ngram import NgramModel, text_to_indices
+from cryptex.core.ngram import NgramModel, text_to_indices
 
 
 # Configuration
@@ -684,3 +684,4 @@ def run_mcmc(
         result.swap_acceptance_rate = 0.0
 
     return result
+

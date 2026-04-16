@@ -9,7 +9,7 @@ import pytest
 @pytest.fixture()
 def mock_mcmc_result():
     """Create a mock MCMCResult with realistic data."""
-    from cryptex.mcmc import MCMCResult
+    from cryptex.solvers.mcmc import MCMCResult
 
     r = MCMCResult()
     r.best_key = "zyxwvutsrqponmlkjihgfedcba"
@@ -29,22 +29,22 @@ def mock_mcmc_result():
 
 class TestSparklineTrajectory:
     def test_returns_string(self, mock_mcmc_result) -> None:
-        from cryptex.convergence import sparkline_trajectory
+        from cryptex.analysis.convergence import sparkline_trajectory
 
         s = sparkline_trajectory(mock_mcmc_result)
         assert isinstance(s, str)
         assert len(s) > 0
 
     def test_width_parameter(self, mock_mcmc_result) -> None:
-        from cryptex.convergence import sparkline_trajectory
+        from cryptex.analysis.convergence import sparkline_trajectory
 
         short = sparkline_trajectory(mock_mcmc_result, width=10)
         long = sparkline_trajectory(mock_mcmc_result, width=50)
         assert len(short) <= len(long) + 5  # Approximate
 
     def test_empty_trajectory(self) -> None:
-        from cryptex.convergence import sparkline_trajectory
-        from cryptex.mcmc import MCMCResult
+        from cryptex.analysis.convergence import sparkline_trajectory
+        from cryptex.solvers.mcmc import MCMCResult
 
         r = MCMCResult()
         s = sparkline_trajectory(r)
@@ -53,7 +53,7 @@ class TestSparklineTrajectory:
 
 class TestChainConsensus:
     def test_returns_dict(self, mock_mcmc_result) -> None:
-        from cryptex.convergence import chain_consensus
+        from cryptex.analysis.convergence import chain_consensus
 
         result = chain_consensus(mock_mcmc_result)
         assert "agreement_rate" in result
@@ -62,7 +62,7 @@ class TestChainConsensus:
         assert "num_chains" in result
 
     def test_agreement_rate_range(self, mock_mcmc_result) -> None:
-        from cryptex.convergence import chain_consensus
+        from cryptex.analysis.convergence import chain_consensus
 
         result = chain_consensus(mock_mcmc_result)
         rate = result["agreement_rate"]
@@ -70,8 +70,8 @@ class TestChainConsensus:
         assert 0.0 <= rate <= 1.0
 
     def test_perfect_agreement(self) -> None:
-        from cryptex.convergence import chain_consensus
-        from cryptex.mcmc import MCMCResult
+        from cryptex.analysis.convergence import chain_consensus
+        from cryptex.solvers.mcmc import MCMCResult
 
         r = MCMCResult()
         key = "abcdefghijklmnopqrstuvwxyz"
@@ -81,8 +81,8 @@ class TestChainConsensus:
         assert result["agreement_rate"] == 1.0
 
     def test_no_chains(self) -> None:
-        from cryptex.convergence import chain_consensus
-        from cryptex.mcmc import MCMCResult
+        from cryptex.analysis.convergence import chain_consensus
+        from cryptex.solvers.mcmc import MCMCResult
 
         r = MCMCResult()
         result = chain_consensus(r)
@@ -91,7 +91,7 @@ class TestChainConsensus:
 
 class TestPlotScoreTrajectory:
     def test_saves_file(self, mock_mcmc_result, tmp_path) -> None:
-        from cryptex.convergence import plot_score_trajectory
+        from cryptex.analysis.convergence import plot_score_trajectory
 
         save_path = tmp_path / "test_trajectory.png"
         result = plot_score_trajectory(mock_mcmc_result, save_path=str(save_path))
@@ -99,7 +99,7 @@ class TestPlotScoreTrajectory:
         assert save_path.exists()
 
     def test_with_reference_score(self, mock_mcmc_result, tmp_path) -> None:
-        from cryptex.convergence import plot_score_trajectory
+        from cryptex.analysis.convergence import plot_score_trajectory
 
         save_path = tmp_path / "test_ref.png"
         plot_score_trajectory(
@@ -110,7 +110,7 @@ class TestPlotScoreTrajectory:
 
 class TestKeyConfidenceHeatmap:
     def test_saves_file(self, mock_mcmc_result, tmp_path) -> None:
-        from cryptex.convergence import key_confidence_heatmap
+        from cryptex.analysis.convergence import key_confidence_heatmap
 
         save_path = tmp_path / "test_heatmap.png"
         result = key_confidence_heatmap(mock_mcmc_result, save_path=str(save_path))
@@ -118,8 +118,8 @@ class TestKeyConfidenceHeatmap:
         assert save_path.exists()
 
     def test_no_chains(self, tmp_path) -> None:
-        from cryptex.convergence import key_confidence_heatmap
-        from cryptex.mcmc import MCMCResult
+        from cryptex.analysis.convergence import key_confidence_heatmap
+        from cryptex.solvers.mcmc import MCMCResult
 
         r = MCMCResult()
         result = key_confidence_heatmap(r, save_path=str(tmp_path / "empty.png"))
@@ -129,7 +129,7 @@ class TestKeyConfidenceHeatmap:
 
 class TestFrequencyComparisonPlot:
     def test_saves_file(self, tmp_path) -> None:
-        from cryptex.convergence import frequency_comparison_plot
+        from cryptex.analysis.convergence import frequency_comparison_plot
 
         save_path = tmp_path / "test_freq.png"
         result = frequency_comparison_plot(
@@ -137,3 +137,4 @@ class TestFrequencyComparisonPlot:
         )
         assert result is not None
         assert save_path.exists()
+

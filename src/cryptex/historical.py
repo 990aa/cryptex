@@ -171,7 +171,7 @@ def run_historical_challenge(
     """
     import time
 
-    from cryptex.evaluation import symbol_error_rate
+    from cryptex.analysis.evaluation import symbol_error_rate
 
     result: dict[str, object] = {
         "name": cipher.name,
@@ -182,8 +182,8 @@ def run_historical_challenge(
     t0 = time.time()
 
     if cipher.cipher_type == "substitution":
-        from cryptex.mcmc import MCMCConfig, run_mcmc
-        from cryptex.ngram import get_model
+        from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
+        from cryptex.core.ngram import get_model
 
         if model is None:
             model = get_model()
@@ -194,8 +194,8 @@ def run_historical_challenge(
         result["key_found"] = mcmc_result.best_key
 
     elif cipher.cipher_type == "vigenere":
-        from cryptex.ngram import get_model
-        from cryptex.vigenere_cracker import crack_vigenere
+        from cryptex.core.ngram import get_model
+        from cryptex.solvers.vigenere import crack_vigenere
 
         if model is None:
             model = get_model()
@@ -205,8 +205,8 @@ def run_historical_challenge(
         result["key_found"] = vig_result.best_key
 
     elif cipher.cipher_type == "transposition":
-        from cryptex.ngram import get_model
-        from cryptex.transposition_cracker import crack_transposition
+        from cryptex.core.ngram import get_model
+        from cryptex.solvers.transposition import crack_transposition
 
         if model is None:
             model = get_model()
@@ -216,8 +216,8 @@ def run_historical_challenge(
         result["key_found"] = str(trans_result.best_key)
 
     elif cipher.cipher_type == "playfair":
-        from cryptex.ngram import get_model
-        from cryptex.playfair_cracker import crack_playfair
+        from cryptex.core.ngram import get_model
+        from cryptex.solvers.playfair import crack_playfair
 
         model_ns = get_model(include_space=False)
         pf_result = crack_playfair(cipher.ciphertext, model_ns)
@@ -245,3 +245,4 @@ def run_historical_challenge(
         callback(result)
 
     return result
+

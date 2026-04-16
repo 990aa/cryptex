@@ -9,30 +9,30 @@ class TestCharConversion:
     """Tests for char_to_idx and text_to_indices."""
 
     def test_char_to_idx_a(self) -> None:
-        from cryptex.ngram import char_to_idx
+        from cryptex.core.ngram import char_to_idx
 
         # include_space=True: space=0, a=1, b=2, ..., z=26
         assert char_to_idx("a", include_space=True) == 1
 
     def test_char_to_idx_z(self) -> None:
-        from cryptex.ngram import char_to_idx
+        from cryptex.core.ngram import char_to_idx
 
         assert char_to_idx("z", include_space=True) == 26
 
     def test_char_to_idx_space(self) -> None:
-        from cryptex.ngram import char_to_idx
+        from cryptex.core.ngram import char_to_idx
 
         assert char_to_idx(" ", include_space=True) == 0
 
     def test_char_to_idx_no_space(self) -> None:
-        from cryptex.ngram import char_to_idx
+        from cryptex.core.ngram import char_to_idx
 
         # include_space=False: a=0, b=1, ..., z=25
         assert char_to_idx("a", include_space=False) == 0
         assert char_to_idx("z", include_space=False) == 25
 
     def test_text_to_indices_roundtrip(self) -> None:
-        from cryptex.ngram import text_to_indices
+        from cryptex.core.ngram import text_to_indices
 
         text = "hello world"
         idx = text_to_indices(text, include_space=True)
@@ -43,14 +43,14 @@ class TestCharConversion:
         assert idx[5] == 0  # space
 
     def test_text_to_indices_no_space(self) -> None:
-        from cryptex.ngram import text_to_indices
+        from cryptex.core.ngram import text_to_indices
 
         text = "abc"
         idx = text_to_indices(text, include_space=False)
         np.testing.assert_array_equal(idx, [0, 1, 2])
 
     def test_empty_string(self) -> None:
-        from cryptex.ngram import text_to_indices
+        from cryptex.core.ngram import text_to_indices
 
         idx = text_to_indices("", include_space=True)
         assert len(idx) == 0
@@ -98,7 +98,7 @@ class TestNgramModel:
         assert score < 0  # log-probabilities are negative
 
     def test_score_indices_matches_text(self, trained_model) -> None:
-        from cryptex.ngram import text_to_indices
+        from cryptex.core.ngram import text_to_indices
 
         text = "hello world"
         s1 = trained_model.score(text)
@@ -107,7 +107,7 @@ class TestNgramModel:
         assert abs(s1 - s2) < 1e-6
 
     def test_quadgrams_fast_matches_score(self, trained_model) -> None:
-        from cryptex.ngram import text_to_indices
+        from cryptex.core.ngram import text_to_indices
 
         text = "in the beginning there was light"
         idx = text_to_indices(text, trained_model.include_space)
@@ -120,7 +120,7 @@ class TestNgramModel:
     def test_model_save_load_roundtrip(self, trained_model, tmp_path) -> None:
         path = tmp_path / "test_model.pkl"
         trained_model.save(path)
-        from cryptex.ngram import NgramModel
+        from cryptex.core.ngram import NgramModel
 
         loaded = NgramModel.load(path)
         assert loaded.A == trained_model.A
@@ -139,3 +139,4 @@ class TestNgramModel:
     def test_single_char_score(self, trained_model) -> None:
         score = trained_model.score("a")
         assert isinstance(score, float)
+

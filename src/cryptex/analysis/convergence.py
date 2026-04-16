@@ -16,7 +16,7 @@ from pathlib import Path
 
 import numpy as np
 
-from cryptex.mcmc import MCMCResult
+from cryptex.solvers.mcmc import MCMCResult
 
 
 def _write_json_report(
@@ -256,3 +256,4 @@ def frequency_comparison_plot(
         "decrypted": pt_freq.tolist(),
     }
     return _write_json_report(payload, save_path, "frequency_comparison.json")
+

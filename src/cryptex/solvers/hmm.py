@@ -19,7 +19,7 @@ from typing import Callable
 
 import numpy as np
 
-from cryptex.ngram import NgramModel
+from cryptex.core.ngram import NgramModel
 
 
 # Config
@@ -311,3 +311,4 @@ def run_hmm(
     result.best_score = ll
 
     return result
+

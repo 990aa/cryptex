@@ -9,7 +9,7 @@ import pytest
 
 class TestStressTestCase:
     def test_defaults(self) -> None:
-        from cryptex.adversarial import StressTestCase
+        from cryptex.analysis.adversarial import StressTestCase
 
         c = StressTestCase()
         assert c.name == ""
@@ -18,7 +18,7 @@ class TestStressTestCase:
 
 class TestStressTestResult:
     def test_defaults(self) -> None:
-        from cryptex.adversarial import StressTestResult
+        from cryptex.analysis.adversarial import StressTestResult
 
         r = StressTestResult()
         assert r.ser == 0.0
@@ -27,38 +27,38 @@ class TestStressTestResult:
 
 class TestTextGenerators:
     def test_legal_text(self) -> None:
-        from cryptex.adversarial import _legal_text
+        from cryptex.analysis.adversarial import _legal_text
 
         text = _legal_text()
         assert len(text) > 50
         assert all(ch in string.ascii_lowercase + " " for ch in text)
 
     def test_technical_text(self) -> None:
-        from cryptex.adversarial import _technical_text
+        from cryptex.analysis.adversarial import _technical_text
 
         text = _technical_text()
         assert len(text) > 50
 
     def test_poetry_text(self) -> None:
-        from cryptex.adversarial import _poetry_text
+        from cryptex.analysis.adversarial import _poetry_text
 
         text = _poetry_text()
         assert len(text) > 50
 
     def test_repetitive_text(self) -> None:
-        from cryptex.adversarial import _repetitive_text
+        from cryptex.analysis.adversarial import _repetitive_text
 
         text = _repetitive_text()
         assert len(text) > 20
 
     def test_short_text(self) -> None:
-        from cryptex.adversarial import _short_text
+        from cryptex.analysis.adversarial import _short_text
 
         text = _short_text()
         assert 30 < len(text) < 100
 
     def test_very_short_text(self) -> None:
-        from cryptex.adversarial import _very_short_text
+        from cryptex.analysis.adversarial import _very_short_text
 
         text = _very_short_text()
         assert len(text) < 30
@@ -66,14 +66,14 @@ class TestTextGenerators:
 
 class TestKeyGenerators:
     def test_uniform_key(self) -> None:
-        from cryptex.adversarial import _uniform_key
+        from cryptex.analysis.adversarial import _uniform_key
 
         key = _uniform_key()
         assert len(key) == 26
         assert sorted(key) == list(string.ascii_lowercase)
 
     def test_adversarial_key(self) -> None:
-        from cryptex.adversarial import _adversarial_key
+        from cryptex.analysis.adversarial import _adversarial_key
 
         key = _adversarial_key()
         assert len(key) == 26
@@ -82,14 +82,14 @@ class TestKeyGenerators:
 
 class TestGenerateStressTests:
     def test_returns_list(self) -> None:
-        from cryptex.adversarial import generate_stress_tests
+        from cryptex.analysis.adversarial import generate_stress_tests
 
         cases = generate_stress_tests()
         assert isinstance(cases, list)
         assert len(cases) == 8
 
     def test_each_case_has_fields(self) -> None:
-        from cryptex.adversarial import generate_stress_tests
+        from cryptex.analysis.adversarial import generate_stress_tests
 
         for case in generate_stress_tests():
             assert case.name != ""
@@ -99,7 +99,7 @@ class TestGenerateStressTests:
             assert len(case.key) == 26
 
     def test_ciphertext_differs_from_plaintext(self) -> None:
-        from cryptex.adversarial import generate_stress_tests
+        from cryptex.analysis.adversarial import generate_stress_tests
 
         for case in generate_stress_tests():
             # At least some cases should have different ct vs pt
@@ -111,7 +111,7 @@ class TestGenerateStressTests:
                 )
 
     def test_cases_cover_difficulties(self) -> None:
-        from cryptex.adversarial import generate_stress_tests
+        from cryptex.analysis.adversarial import generate_stress_tests
 
         difficulties = {c.difficulty for c in generate_stress_tests()}
         assert len(difficulties) >= 2  # At least normal and hard
@@ -121,7 +121,7 @@ class TestRunStressTests:
     @pytest.mark.timeout(300)
     def test_runs_single_case(self, trained_model) -> None:
         """Run a single stress test to verify the framework works."""
-        from cryptex.adversarial import generate_stress_tests, run_stress_tests
+        from cryptex.analysis.adversarial import generate_stress_tests, run_stress_tests
 
         cases = generate_stress_tests()
         # Pick the shortest test to minimize time
@@ -137,7 +137,7 @@ class TestRunStressTests:
 
     @pytest.mark.timeout(120)
     def test_callback_invoked(self, trained_model) -> None:
-        from cryptex.adversarial import StressTestCase, run_stress_tests
+        from cryptex.analysis.adversarial import StressTestCase, run_stress_tests
         from cryptex.ciphers import SimpleSubstitution
 
         key = SimpleSubstitution.random_key()
@@ -152,3 +152,4 @@ class TestRunStressTests:
             trained_model, [case], callback=lambda name, r: calls.append(name)
         )
         assert len(calls) == 1
+

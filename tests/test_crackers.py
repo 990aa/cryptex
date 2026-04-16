@@ -14,7 +14,7 @@ import pytest
 
 class TestVigenereCracker:
     def test_ioc_english(self) -> None:
-        from cryptex.vigenere_cracker import _ioc
+        from cryptex.solvers.vigenere import _ioc
 
         # Use a longer text for a meaningful IoC close to English average (~0.0667)
         english_text = (
@@ -25,7 +25,7 @@ class TestVigenereCracker:
         assert 0.04 < ioc < 0.10  # English IoC is typically ~0.065
 
     def test_ioc_uniform(self) -> None:
-        from cryptex.vigenere_cracker import _ioc
+        from cryptex.solvers.vigenere import _ioc
 
         # Each letter appears once
         text = "abcdefghijklmnopqrstuvwxyz"
@@ -34,7 +34,7 @@ class TestVigenereCracker:
 
     def test_detect_key_length(self) -> None:
         from cryptex.ciphers import Vigenere
-        from cryptex.vigenere_cracker import detect_key_length
+        from cryptex.solvers.vigenere import detect_key_length
 
         key = "secret"  # length 6
         pt = (
@@ -46,7 +46,7 @@ class TestVigenereCracker:
         assert 6 in lengths or 3 in lengths  # 6 or a factor of 6
 
     def test_solve_caesar(self) -> None:
-        from cryptex.vigenere_cracker import _solve_caesar
+        from cryptex.solvers.vigenere import _solve_caesar
 
         # Shift by 3 (a→d, b→e, etc.)
         shifted = "wkh"  # "the" shifted by 3
@@ -56,7 +56,7 @@ class TestVigenereCracker:
     @pytest.mark.timeout(30)
     def test_crack_vigenere(self, trained_model) -> None:
         from cryptex.ciphers import Vigenere
-        from cryptex.vigenere_cracker import VigenereConfig, crack_vigenere
+        from cryptex.solvers.vigenere import VigenereConfig, crack_vigenere
 
         key = "secret"
         pt = "the quick brown fox jumps over the lazy dog " * 8
@@ -71,7 +71,7 @@ class TestVigenereCracker:
     @pytest.mark.timeout(30)
     def test_crack_with_callback(self, trained_model) -> None:
         from cryptex.ciphers import Vigenere
-        from cryptex.vigenere_cracker import VigenereConfig, crack_vigenere
+        from cryptex.solvers.vigenere import VigenereConfig, crack_vigenere
 
         pt = "hello world test text for vigenere " * 5
         ct = Vigenere.encrypt(pt, "abc")
@@ -83,7 +83,7 @@ class TestVigenereCracker:
         assert len(calls) > 0
 
     def test_kasiski_distances(self) -> None:
-        from cryptex.vigenere_cracker import kasiski_key_lengths
+        from cryptex.solvers.vigenere import kasiski_key_lengths
 
         # With a known periodic text, Kasiski should find factors
         from cryptex.ciphers import Vigenere
@@ -104,7 +104,7 @@ class TestTranspositionCracker:
     @pytest.mark.timeout(120)
     def test_crack_transposition(self, trained_model) -> None:
         from cryptex.ciphers import ColumnarTransposition
-        from cryptex.transposition_cracker import (
+        from cryptex.solvers.transposition import (
             TranspositionConfig,
             crack_transposition,
         )
@@ -122,7 +122,7 @@ class TestTranspositionCracker:
     @pytest.mark.timeout(60)
     def test_callback_invoked(self, trained_model) -> None:
         from cryptex.ciphers import ColumnarTransposition
-        from cryptex.transposition_cracker import (
+        from cryptex.solvers.transposition import (
             TranspositionConfig,
             crack_transposition,
         )
@@ -150,7 +150,7 @@ class TestPlayfairCracker:
     @pytest.mark.timeout(120)
     def test_crack_playfair(self, trained_model_nospace) -> None:
         from cryptex.ciphers import Playfair
-        from cryptex.playfair_cracker import PlayfairConfig, crack_playfair
+        from cryptex.solvers.playfair import PlayfairConfig, crack_playfair
 
         key = Playfair.random_key()
         pt = (
@@ -166,14 +166,14 @@ class TestPlayfairCracker:
         assert len(result.best_key) == 25
 
     def test_build_decrypt_table(self) -> None:
-        from cryptex.playfair_cracker import _build_decrypt_table
+        from cryptex.solvers.playfair import _build_decrypt_table
 
         key = list(range(25))
         table = _build_decrypt_table(key)
         assert table.shape == (25, 25)
 
     def test_propose_returns_valid_move(self) -> None:
-        from cryptex.playfair_cracker import _propose
+        from cryptex.solvers.playfair import _propose
 
         key = list(range(25))
         move_type, info = _propose(key)
@@ -185,3 +185,4 @@ class TestPlayfairCracker:
             "rotate_row",
             "rotate_col",
         )
+

@@ -635,3 +635,4 @@ def get_model(force_retrain: bool = False, include_space: bool = True) -> NgramM
 
     model.save(model_path)
     return model
+

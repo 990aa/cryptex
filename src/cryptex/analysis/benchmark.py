@@ -35,3 +35,4 @@ def run_benchmark_suite(
             success_threshold=success_threshold,
         )
     return result
+

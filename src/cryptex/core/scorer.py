@@ -41,3 +41,4 @@ class UnifiedScorer:
             return self.model.score_quadgrams_with_mapping(ciphertext_idx, inv_map)
         plain_idx = inv_map[ciphertext_idx]
         return self.score_indices(plain_idx)
+

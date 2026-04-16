@@ -211,7 +211,7 @@ def run_stress_tests(
     callback : callable, optional
         callback(case_name, result)
     """
-    from cryptex.mcmc import MCMCConfig, run_mcmc
+    from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
 
     if cases is None:
         cases = generate_stress_tests()
@@ -246,3 +246,4 @@ def run_stress_tests(
             callback(case.name, result)
 
     return results
+

@@ -15,7 +15,7 @@ from typing import Callable
 
 import numpy as np
 
-from cryptex.ngram import NgramModel, text_to_indices
+from cryptex.core.ngram import NgramModel, text_to_indices
 
 
 @dataclass
@@ -221,3 +221,4 @@ def run_genetic(
     result.best_score = float(fitness[best_idx])
 
     return result
+

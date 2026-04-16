@@ -15,7 +15,7 @@ from typing import Callable
 
 
 from cryptex.ciphers import ColumnarTransposition
-from cryptex.ngram import NgramModel, text_to_indices
+from cryptex.core.ngram import NgramModel, text_to_indices
 
 
 @dataclass
@@ -140,3 +140,4 @@ def crack_transposition(
                 result.detected_ncols = ncols
 
     return result
+

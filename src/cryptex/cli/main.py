@@ -184,7 +184,7 @@ def _emit_output(output: CrackOutput, output_format: str, top_k: int = 1) -> Non
 
 def cmd_train(args: argparse.Namespace) -> None:
     """Download corpus and train the n-gram model."""
-    from cryptex.ngram import get_model
+    from cryptex.core.ngram import get_model
 
     console.print(
         "[bold cyan]Training language models (this may take a few minutes the first time)..."
@@ -203,7 +203,7 @@ def cmd_train(args: argparse.Namespace) -> None:
 def cmd_demo(args: argparse.Namespace) -> None:
     """Encrypt a sample text, then crack it live."""
     from cryptex.ciphers import get_engine
-    from cryptex.ngram import get_model
+    from cryptex.core.ngram import get_model
 
     console.print("[bold cyan]Preparing demo...")
     model = get_model()
@@ -609,7 +609,7 @@ def _crack_noninteractive(
     known_pairs: list[tuple[str, str]] | None = None,
     language: str = "english",
 ) -> CrackOutput:  # noqa: ANN001
-    from cryptex.mcmc import MCMCConfig
+    from cryptex.solvers.mcmc import MCMCConfig
     from cryptex.solvers.kpa import crack_with_known_plaintext
 
     cipher_name = cipher_name.lower().strip()
@@ -764,7 +764,7 @@ def _run_substitution_mcmc(  # noqa: ANN001
     stop_event: threading.Event | None = None,
     fixed_mapping: dict[str, str] | None = None,
 ):
-    from cryptex.mcmc import MCMCConfig, run_mcmc
+    from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
 
     if config is None:
         config = MCMCConfig()
@@ -786,7 +786,7 @@ def _run_substitution_hmm(  # noqa: ANN001
     stop_event: threading.Event | None = None,
     noise_rate: float = 0.05,
 ):
-    from cryptex.hmm import HMMConfig, run_hmm
+    from cryptex.solvers.hmm import HMMConfig, run_hmm
 
     if config is None:
         config = HMMConfig()
@@ -807,7 +807,7 @@ def _run_substitution_genetic(  # noqa: ANN001
     callback=None,
     stop_event: threading.Event | None = None,
 ):
-    from cryptex.genetic import GeneticConfig, run_genetic
+    from cryptex.solvers.genetic import GeneticConfig, run_genetic
 
     if config is None:
         config = GeneticConfig()
@@ -827,7 +827,7 @@ def _run_vigenere(
     callback=None,
     stop_event: threading.Event | None = None,
 ):  # noqa: ANN001
-    from cryptex.vigenere_cracker import VigenereConfig, crack_vigenere
+    from cryptex.solvers.vigenere import VigenereConfig, crack_vigenere
 
     if config is None:
         config = VigenereConfig()
@@ -847,7 +847,7 @@ def _run_transposition(  # noqa: ANN001
     callback=None,
     stop_event: threading.Event | None = None,
 ):
-    from cryptex.transposition_cracker import TranspositionConfig, crack_transposition
+    from cryptex.solvers.transposition import TranspositionConfig, crack_transposition
 
     if config is None:
         config = TranspositionConfig()
@@ -869,8 +869,8 @@ def _run_playfair(
     language: str = "english",
 ):  # noqa: ANN001
     from cryptex.languages import get_language_model
-    from cryptex.ngram import get_model
-    from cryptex.playfair_cracker import PlayfairConfig, crack_playfair
+    from cryptex.core.ngram import get_model
+    from cryptex.solvers.playfair import PlayfairConfig, crack_playfair
 
     if language == "english":
         model_ns = get_model(include_space=False)
@@ -936,8 +936,8 @@ def _crack_substitution_mcmc(
     t0: float,
     postprocess_plaintext: Callable[[str], str] | None = None,
 ) -> None:  # noqa: ANN001
-    from cryptex.display import MCMCDisplay, print_result_box
-    from cryptex.mcmc import MCMCConfig
+    from cryptex.cli.display import MCMCDisplay, print_result_box
+    from cryptex.solvers.mcmc import MCMCConfig
 
     config = MCMCConfig()
     display = MCMCDisplay(config.num_restarts, config.iterations, ciphertext)
@@ -975,8 +975,8 @@ def _crack_substitution_hmm(
     t0: float,
     postprocess_plaintext: Callable[[str], str] | None = None,
 ) -> None:  # noqa: ANN001
-    from cryptex.display import HMMDisplay, print_result_box
-    from cryptex.hmm import HMMConfig
+    from cryptex.cli.display import HMMDisplay, print_result_box
+    from cryptex.solvers.hmm import HMMConfig
 
     config = HMMConfig()
     display = HMMDisplay()
@@ -1007,8 +1007,8 @@ def _crack_substitution_hmm(
 
 
 def _crack_vigenere(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
-    from cryptex.display import GenericDisplay, print_result_box
-    from cryptex.vigenere_cracker import VigenereConfig
+    from cryptex.cli.display import GenericDisplay, print_result_box
+    from cryptex.solvers.vigenere import VigenereConfig
 
     config = VigenereConfig()
     display = GenericDisplay("Vigenere Cracker")
@@ -1036,8 +1036,8 @@ def _crack_vigenere(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
 
 
 def _crack_transposition(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
-    from cryptex.display import GenericDisplay, print_result_box
-    from cryptex.transposition_cracker import TranspositionConfig
+    from cryptex.cli.display import GenericDisplay, print_result_box
+    from cryptex.solvers.transposition import TranspositionConfig
 
     config = TranspositionConfig()
     display = GenericDisplay("Transposition Cracker")
@@ -1072,8 +1072,8 @@ def _crack_playfair(
     t0: float,
     language: str = "english",
 ) -> None:  # noqa: ANN001
-    from cryptex.display import GenericDisplay, print_result_box
-    from cryptex.playfair_cracker import PlayfairConfig
+    from cryptex.cli.display import GenericDisplay, print_result_box
+    from cryptex.solvers.playfair import PlayfairConfig
 
     config = PlayfairConfig()
     display = GenericDisplay("Playfair Cracker")
@@ -1106,7 +1106,7 @@ def _crack_playfair(
 
 
 def _crack_affine(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
-    from cryptex.display import GenericDisplay, print_result_box
+    from cryptex.cli.display import GenericDisplay, print_result_box
     from cryptex.solvers.affine import AffineConfig
 
     config = AffineConfig()
@@ -1132,7 +1132,7 @@ def _crack_affine(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
 
 
 def _crack_railfence(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
-    from cryptex.display import GenericDisplay, print_result_box
+    from cryptex.cli.display import GenericDisplay, print_result_box
     from cryptex.solvers.railfence import RailFenceConfig
 
     config = RailFenceConfig()
@@ -1166,8 +1166,8 @@ def _crack_substitution_genetic(
     t0: float,
     postprocess_plaintext: Callable[[str], str] | None = None,
 ) -> None:  # noqa: ANN001
-    from cryptex.display import GenericDisplay, print_result_box
-    from cryptex.genetic import GeneticConfig
+    from cryptex.cli.display import GenericDisplay, print_result_box
+    from cryptex.solvers.genetic import GeneticConfig
 
     config = GeneticConfig()
     display = GenericDisplay("Genetic Algorithm")
@@ -1202,16 +1202,16 @@ def _crack_substitution_genetic(
 def cmd_analyse(args: argparse.Namespace) -> None:
     """Run MCMC with full convergence analysis and diagnostic JSON reports."""
     from cryptex.ciphers import SimpleSubstitution
-    from cryptex.convergence import (
+    from cryptex.analysis.convergence import (
         chain_consensus,
         frequency_comparison_plot,
         key_confidence_heatmap,
         plot_score_trajectory,
         sparkline_trajectory,
     )
-    from cryptex.display import print_result_box
-    from cryptex.mcmc import MCMCConfig, run_mcmc
-    from cryptex.ngram import get_model
+    from cryptex.cli.display import print_result_box
+    from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
+    from cryptex.core.ngram import get_model
 
     console.print("[bold cyan]Running MCMC with convergence analysis...")
     model = get_model()
@@ -1234,7 +1234,7 @@ def cmd_analyse(args: argparse.Namespace) -> None:
 
     config = MCMCConfig(iterations=50_000, num_restarts=8, track_trajectory=True)
 
-    from cryptex.display import MCMCDisplay
+    from cryptex.cli.display import MCMCDisplay
 
     display = MCMCDisplay(config.num_restarts, config.iterations, ciphertext)
     t0 = time.time()
@@ -1265,7 +1265,7 @@ def cmd_analyse(args: argparse.Namespace) -> None:
 
     ref_score = None
     if original:
-        from cryptex.ngram import text_to_indices
+        from cryptex.core.ngram import text_to_indices
 
         ref_score = model.score_quadgrams_fast(
             text_to_indices(original, model.include_space)
@@ -1290,7 +1290,7 @@ def cmd_analyse(args: argparse.Namespace) -> None:
         console.print(f"  [green]Saved: {p3}")
 
     if original:
-        from cryptex.evaluation import symbol_error_rate
+        from cryptex.analysis.evaluation import symbol_error_rate
 
         ser = symbol_error_rate(original, result.best_plaintext)
         console.print(f"\n  [bold]Symbol Error Rate: {ser:.1%}")
@@ -1316,7 +1316,7 @@ def cmd_detect(args: argparse.Namespace) -> None:
     """Detect the cipher type of unknown ciphertext."""
     from rich.table import Table
 
-    from cryptex.detector import detect_cipher_type
+    from cryptex.core.detector import detect_cipher_type
 
     if args.text:
         ciphertext = args.text.strip().lower()
@@ -1371,8 +1371,8 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
     from rich.table import Table
 
     from cryptex.corpus import download_corpus
-    from cryptex.evaluation import plot_benchmark, run_benchmark
-    from cryptex.ngram import get_model
+    from cryptex.analysis.evaluation import plot_benchmark, run_benchmark
+    from cryptex.core.ngram import get_model
 
     model = get_model()
     console.print("[bold cyan]Running benchmark...")
@@ -1433,8 +1433,8 @@ def cmd_phase_transition(args: argparse.Namespace) -> None:
     from rich.table import Table
 
     from cryptex.corpus import download_corpus
-    from cryptex.evaluation import plot_phase_transition, run_phase_transition
-    from cryptex.ngram import get_model
+    from cryptex.analysis.evaluation import plot_phase_transition, run_phase_transition
+    from cryptex.core.ngram import get_model
 
     model = get_model()
     corpus = download_corpus()
@@ -1487,8 +1487,8 @@ def cmd_stress_test(_args: argparse.Namespace) -> None:
     """Run adversarial stress tests."""
     from rich.table import Table
 
-    from cryptex.adversarial import generate_stress_tests, run_stress_tests
-    from cryptex.ngram import get_model
+    from cryptex.analysis.adversarial import generate_stress_tests, run_stress_tests
+    from cryptex.core.ngram import get_model
 
     model = get_model()
     cases = generate_stress_tests()
@@ -1813,3 +1813,4 @@ def main(argv: list[str] | None = None) -> None:
 
 if __name__ == "__main__":
     main()
+

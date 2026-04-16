@@ -125,3 +125,4 @@ def known_plaintext_attack(ciphertext: str, known_plaintext: str) -> KPAResult:
                 result.vigenere_key_guesses.append(key)
 
     return result
+

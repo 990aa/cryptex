@@ -15,7 +15,7 @@ from typing import Callable
 
 import numpy as np
 
-from cryptex.ngram import NgramModel
+from cryptex.core.ngram import NgramModel
 from cryptex.warnings import CryptexWarning
 
 
@@ -358,3 +358,4 @@ def crack_playfair(
         result.iterations_total += config.iterations
 
     return result
+

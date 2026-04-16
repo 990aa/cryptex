@@ -15,7 +15,7 @@ from cryptex.ciphers import (
     Vigenere,
     get_engine,
 )
-from cryptex.evaluation import symbol_error_rate
+from cryptex.analysis.evaluation import symbol_error_rate
 
 
 # Fixtures
@@ -23,14 +23,14 @@ from cryptex.evaluation import symbol_error_rate
 
 @pytest.fixture(scope="module")
 def model():
-    from cryptex.ngram import get_model
+    from cryptex.core.ngram import get_model
 
     return get_model()
 
 
 @pytest.fixture(scope="module")
 def model_nospace():
-    from cryptex.ngram import get_model
+    from cryptex.core.ngram import get_model
 
     return get_model(include_space=False)
 
@@ -60,7 +60,7 @@ class TestMCMCEndToEnd:
     @pytest.mark.timeout(180)
     def test_cracks_medium_text(self, model) -> None:
         """MCMC should crack a ~300-char substitution cipher with SER < 20%."""
-        from cryptex.mcmc import MCMCConfig, run_mcmc
+        from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
 
         key = SimpleSubstitution.random_key()
         ct = SimpleSubstitution.encrypt(MEDIUM_TEXT, key)
@@ -76,7 +76,7 @@ class TestMCMCEndToEnd:
     @pytest.mark.timeout(120)
     def test_cracks_short_text(self, model) -> None:
         """MCMC on shorter text — may not be perfect but should converge."""
-        from cryptex.mcmc import MCMCConfig, run_mcmc
+        from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
 
         key = SimpleSubstitution.random_key()
         ct = SimpleSubstitution.encrypt(SHORT_TEXT, key)
@@ -105,7 +105,7 @@ class TestHMMEndToEnd:
     @pytest.mark.timeout(120)
     def test_hmm_runs(self, model) -> None:
         """HMM solver should produce output."""
-        from cryptex.hmm import HMMConfig, run_hmm
+        from cryptex.solvers.hmm import HMMConfig, run_hmm
 
         key = SimpleSubstitution.random_key()
         ct = SimpleSubstitution.encrypt(SHORT_TEXT, key)
@@ -122,7 +122,7 @@ class TestGeneticEndToEnd:
     @pytest.mark.timeout(120)
     def test_genetic_cracks(self, model) -> None:
         """Genetic algorithm should crack substitution cipher."""
-        from cryptex.genetic import GeneticConfig, run_genetic
+        from cryptex.solvers.genetic import GeneticConfig, run_genetic
 
         key = SimpleSubstitution.random_key()
         ct = SimpleSubstitution.encrypt(MEDIUM_TEXT, key)
@@ -139,7 +139,7 @@ class TestGeneticEndToEnd:
 class TestVigenereEndToEnd:
     @pytest.mark.timeout(60)
     def test_vigenere_cracks(self, model) -> None:
-        from cryptex.vigenere_cracker import crack_vigenere
+        from cryptex.solvers.vigenere import crack_vigenere
 
         key = "cipher"
         ct = Vigenere.encrypt(MEDIUM_TEXT, key)
@@ -154,7 +154,7 @@ class TestVigenereEndToEnd:
 class TestTranspositionEndToEnd:
     @pytest.mark.timeout(120)
     def test_transposition_cracks(self, model) -> None:
-        from cryptex.transposition_cracker import crack_transposition
+        from cryptex.solvers.transposition import crack_transposition
 
         key = [2, 0, 3, 1]
         ct = ColumnarTransposition.encrypt(MEDIUM_TEXT, key)
@@ -168,7 +168,7 @@ class TestTranspositionEndToEnd:
 
 class TestDetectionEndToEnd:
     def test_detect_substitution(self) -> None:
-        from cryptex.detector import detect_cipher_type
+        from cryptex.core.detector import detect_cipher_type
 
         key = SimpleSubstitution.random_key()
         ct = SimpleSubstitution.encrypt(MEDIUM_TEXT, key)
@@ -179,7 +179,7 @@ class TestDetectionEndToEnd:
         assert result.confidence > 0
 
     def test_detect_vigenere(self) -> None:
-        from cryptex.detector import detect_cipher_type
+        from cryptex.core.detector import detect_cipher_type
 
         ct = Vigenere.encrypt(MEDIUM_TEXT, "secret")
         result = detect_cipher_type(ct)
@@ -194,7 +194,7 @@ class TestStressSequential:
     @pytest.mark.timeout(300)
     def test_multiple_substitution_keys(self, model) -> None:
         """Run MCMC across 3 different random keys to verify consistency."""
-        from cryptex.mcmc import MCMCConfig, run_mcmc
+        from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
 
         config = MCMCConfig(iterations=30_000, num_restarts=4)
         for _ in range(3):
@@ -230,8 +230,8 @@ class TestStressSequential:
 class TestEvaluationIntegration:
     def test_ser_on_real_crack(self, model) -> None:
         """SER function works with actual cracking output."""
-        from cryptex.evaluation import symbol_error_rate
-        from cryptex.mcmc import MCMCConfig, run_mcmc
+        from cryptex.analysis.evaluation import symbol_error_rate
+        from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
 
         key = SimpleSubstitution.random_key()
         ct = SimpleSubstitution.encrypt(MEDIUM_TEXT, key)
@@ -240,3 +240,4 @@ class TestEvaluationIntegration:
         result = run_mcmc(ct, model, config)
         ser = symbol_error_rate(MEDIUM_TEXT, result.best_plaintext)
         assert 0.0 <= ser <= 1.0
+

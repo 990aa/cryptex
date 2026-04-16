@@ -371,3 +371,4 @@ def crack_vigenere(
             result.detected_key_length = kl
 
     return result
+

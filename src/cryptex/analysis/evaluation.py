@@ -19,7 +19,7 @@ from pathlib import Path
 import numpy as np
 
 from cryptex.ciphers import SimpleSubstitution
-from cryptex.ngram import NgramModel, text_to_indices
+from cryptex.core.ngram import NgramModel, text_to_indices
 
 
 ENGLISH_FREQ_RANK = [
@@ -131,7 +131,7 @@ def run_phase_transition(
     callback : callable, optional
         callback(length, trial, ser, elapsed)
     """
-    from cryptex.mcmc import MCMCConfig, run_mcmc
+    from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
 
     if lengths is None:
         lengths = [50, 75, 100, 150, 200, 300, 500]
@@ -337,8 +337,8 @@ def run_benchmark(
     -------
     list of BenchmarkEntry
     """
-    from cryptex.genetic import GeneticConfig, run_genetic
-    from cryptex.mcmc import MCMCConfig, run_mcmc
+    from cryptex.solvers.genetic import GeneticConfig, run_genetic
+    from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
 
     corpus_clean = "".join(
         ch for ch in corpus.lower() if ch in string.ascii_lowercase or ch == " "
@@ -477,3 +477,4 @@ def plot_benchmark(
         ],
     }
     return _write_json_report(payload, save_path, "benchmark.json")
+

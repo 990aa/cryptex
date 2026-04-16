@@ -3,7 +3,7 @@
 from cryptex.solvers.affine import AffineConfig, AffineResult, crack_affine
 from cryptex.solvers.genetic import GeneticConfig, GeneticResult, run_genetic
 from cryptex.solvers.hmm import HMMConfig, HMMResult, run_hmm
-from cryptex.solvers.kpa import KPAResult, known_plaintext_attack
+from cryptex.solvers.kpa import KPAResult, crack_with_known_plaintext, known_plaintext_attack
 from cryptex.solvers.mcmc import MCMCConfig, MCMCResult, run_mcmc
 from cryptex.solvers.playfair import PlayfairConfig, PlayfairResult, crack_playfair
 from cryptex.solvers.railfence import RailFenceConfig, RailFenceResult, crack_railfence
@@ -33,6 +33,7 @@ __all__ = [
     "VigenereConfig",
     "VigenereResult",
     "crack_affine",
+    "crack_with_known_plaintext",
     "crack_playfair",
     "crack_railfence",
     "crack_transposition",
@@ -42,3 +43,4 @@ __all__ = [
     "run_hmm",
     "run_mcmc",
 ]
+

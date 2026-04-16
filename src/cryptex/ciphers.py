@@ -452,3 +452,4 @@ def get_engine(name: str) -> Any:
         inner = ALL_CIPHERS.get(inner_name, SimpleSubstitution())
         return NoisyCipher(inner)
     raise ValueError(f"Unknown cipher: {name!r}. Choose from {list(ALL_CIPHERS)}")
+

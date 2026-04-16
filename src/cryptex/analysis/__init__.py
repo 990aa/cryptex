@@ -46,3 +46,4 @@ __all__ = [
     "sparkline_trajectory",
     "symbol_error_rate",
 ]
+

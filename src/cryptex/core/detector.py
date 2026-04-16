@@ -405,3 +405,4 @@ def detect_cipher_type(
         all_scores=probs,
         reasoning="; ".join(reasoning_parts),
     )
+

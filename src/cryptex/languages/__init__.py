@@ -14,7 +14,7 @@ from pathlib import Path
 
 import numpy as np
 
-from cryptex.ngram import DATA_DIR, NgramModel
+from cryptex.core.ngram import DATA_DIR, NgramModel
 
 
 # Corpus URLs for each language (public domain, Project Gutenberg)
@@ -323,3 +323,4 @@ def detect_language(text: str) -> tuple[str, dict[str, float]]:
 def get_available_languages() -> list[str]:
     """Return list of supported languages."""
     return ["english"] + list(LANGUAGE_CORPORA.keys())
+
