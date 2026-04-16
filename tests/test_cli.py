@@ -61,6 +61,12 @@ class TestBuildParser:
         args = parser.parse_args(["crack", "--file", "input.txt"])
         assert args.file == "input.txt"
 
+    def test_crack_auto_flag(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(["crack", "--auto", "--text", "abc"])
+        assert args.auto is True
+        assert args.text == "abc"
+
     def test_crack_cipher_and_method(self) -> None:
         parser = build_parser()
         args = parser.parse_args(["crack", "-c", "vigenere", "-m", "hmm", "-t", "xyz"])
