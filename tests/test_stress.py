@@ -18,9 +18,7 @@ from cipher.ciphers import (
 from cipher.evaluation import symbol_error_rate
 
 
-
 # Fixtures
-
 
 
 @pytest.fixture(scope="module")
@@ -49,9 +47,7 @@ MEDIUM_TEXT = (
 SHORT_TEXT = "the quick brown fox jumps over the lazy dog and then runs away fast"
 
 
-
 # End-to-end: MCMC substitution cracking
-
 
 
 class TestMCMCEndToEnd:
@@ -86,9 +82,7 @@ class TestMCMCEndToEnd:
         assert result.best_key != ""
 
 
-
 # End-to-end: HMM substitution cracking
-
 
 
 class TestHMMEndToEnd:
@@ -105,9 +99,7 @@ class TestHMMEndToEnd:
         assert result.best_plaintext != ""
 
 
-
 # End-to-end: Genetic algorithm
-
 
 
 class TestGeneticEndToEnd:
@@ -125,9 +117,7 @@ class TestGeneticEndToEnd:
         assert result.best_score > -1e10
 
 
-
 # End-to-end: Vigenère cracking
-
 
 
 class TestVigenereEndToEnd:
@@ -142,9 +132,7 @@ class TestVigenereEndToEnd:
         assert ser < 0.25, f"SER too high: {ser:.1%}"
 
 
-
 # End-to-end: Transposition cracking
-
 
 
 class TestTranspositionEndToEnd:
@@ -159,9 +147,7 @@ class TestTranspositionEndToEnd:
         assert result.best_score > -1e10
 
 
-
 # End-to-end: Cipher type detection
-
 
 
 class TestDetectionEndToEnd:
@@ -185,9 +171,7 @@ class TestDetectionEndToEnd:
         assert result.predicted_type in result.all_scores
 
 
-
 # Stress: Multiple cipher types in sequence
-
 
 
 class TestStressSequential:
@@ -224,9 +208,7 @@ class TestStressSequential:
                 assert pt.startswith(SHORT_TEXT) or pt.rstrip("x") == SHORT_TEXT
 
 
-
 # Evaluation integration test
-
 
 
 class TestEvaluationIntegration:

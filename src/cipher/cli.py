@@ -15,6 +15,9 @@ Usage examples (all run through ``uv run``):
     uv run cipher historical                     # historical cipher challenges
     uv run cipher language train --lang french   # train French language model
     uv run cipher language detect --text "bonjour le monde"
+    uv run cipher crack --cipher playfair --text "encrypted text"
+    uv run cipher crack --cipher transposition --text "encrypted text"
+    uv run cipher crack --cipher substitution --method genetic --text "encrypted text"
 """
 
 from __future__ import annotations
@@ -24,6 +27,12 @@ import os
 import sys
 import time
 from typing import Callable
+from cipher.mcmc import MCMCConfig, run_mcmc
+from cipher.hmm import HMMConfig, run_hmm
+from cipher.genetic import GeneticConfig, run_genetic
+from cipher.vigenere_cracker import VigenereConfig, crack_vigenere
+from cipher.transposition_cracker import TranspositionConfig, crack_transposition
+from cipher.playfair_cracker import PlayfairConfig, crack_playfair
 
 # Ensure stdout can handle Unicode (Rich box-drawing chars) on Windows
 if sys.platform == "win32":
@@ -47,9 +56,7 @@ from rich.text import Text
 console = Console(force_terminal=True)
 
 
-
 # Sub-commands
-
 
 
 def cmd_train(args: argparse.Namespace) -> None:
@@ -118,6 +125,16 @@ def cmd_demo(args: argparse.Namespace) -> None:
     console.print(f"[dim]True key: {key}")
     console.print()
 
+    def _run_substitution_hmm(  # noqa: ANN001
+        ciphertext: str,
+        model,
+        config=None,
+        callback=None,
+    ):
+        if config is None:
+            config = HMMConfig()
+        return run_hmm(ciphertext, model, config, callback=callback)
+
     _crack(ciphertext, cipher_name, args.method, model)
 
 
@@ -148,7 +165,12 @@ def cmd_crack(args: argparse.Namespace) -> None:
         console.print("[red]Error: empty ciphertext.")
         sys.exit(1)
 
-    if args.auto:
+    def _crack_substitution_mcmc(
+        ciphertext: str,
+        model,
+        t0: float,
+        postprocess_plaintext: Callable[[str], str] | None = None,
+    ) -> None:  # noqa: ANN001
         _crack_auto(ciphertext, model)
         return
 
@@ -171,9 +193,7 @@ def cmd_crack(args: argparse.Namespace) -> None:
                 f"({len(alphabet)} symbols). This may be homophonic substitution."
             )
 
-        postprocess_plaintext = (
-            lambda pt, ghost=mapping: restore_ghost_text(pt, ghost)
-        )
+        postprocess_plaintext = lambda pt, ghost=mapping: restore_ghost_text(pt, ghost)
         ciphertext = ciphertext_core.lower()
     else:
         ciphertext = ciphertext.lower()
@@ -192,7 +212,6 @@ def _crack_auto(ciphertext_raw: str, model) -> None:  # noqa: ANN001
     from cipher.detector import detect_cipher_type
     from cipher.display import print_result_box
     from cipher.io import ghost_map_text, likely_homophonic_cipher, restore_ghost_text
-    from cipher.mcmc import MCMCConfig
 
     detected = detect_cipher_type(ciphertext_raw.lower())
     console.print(
@@ -312,9 +331,7 @@ def _crack_auto(ciphertext_raw: str, model) -> None:  # noqa: ANN001
     )
 
 
-
 # Unified crack dispatcher
-
 
 
 def _crack(
@@ -389,14 +406,11 @@ def _crack(
         sys.exit(1)
 
 
-
 # Substitution — MCMC
-
 
 
 def _crack_substitution_mcmc(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     from cipher.display import MCMCDisplay, print_result_box
-    from cipher.mcmc import MCMCConfig, run_mcmc
 
     config = MCMCConfig()
     display = MCMCDisplay(config.num_restarts, config.iterations, ciphertext)
@@ -422,9 +436,7 @@ def _crack_substitution_mcmc(ciphertext: str, model, t0: float) -> None:  # noqa
     )
 
 
-
 # Substitution — HMM
-
 
 
 def _crack_substitution_hmm(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
@@ -453,14 +465,11 @@ def _crack_substitution_hmm(ciphertext: str, model, t0: float) -> None:  # noqa:
     )
 
 
-
 # Vigenère
-
 
 
 def _crack_vigenere(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     from cipher.display import GenericDisplay, print_result_box
-    from cipher.vigenere_cracker import VigenereConfig, crack_vigenere
 
     config = VigenereConfig()
     display = GenericDisplay("Vigenère Cracker")
@@ -484,14 +493,11 @@ def _crack_vigenere(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     )
 
 
-
 # Columnar Transposition
-
 
 
 def _crack_transposition(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     from cipher.display import GenericDisplay, print_result_box
-    from cipher.transposition_cracker import TranspositionConfig, crack_transposition
 
     config = TranspositionConfig()
     display = GenericDisplay("Transposition Cracker")
@@ -517,15 +523,12 @@ def _crack_transposition(ciphertext: str, model, t0: float) -> None:  # noqa: AN
     )
 
 
-
 # Playfair
-
 
 
 def _crack_playfair(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     from cipher.display import GenericDisplay, print_result_box
     from cipher.ngram import get_model
-    from cipher.playfair_cracker import PlayfairConfig, crack_playfair
 
     # Playfair output has no spaces — use the no-space model for better discrimination
     model_ns = get_model(include_space=False)
@@ -554,14 +557,11 @@ def _crack_playfair(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     )
 
 
-
 # Substitution — Genetic Algorithm
-
 
 
 def _crack_substitution_genetic(ciphertext: str, model, t0: float) -> None:  # noqa: ANN001
     from cipher.display import GenericDisplay, print_result_box
-    from cipher.genetic import GeneticConfig, run_genetic
 
     config = GeneticConfig()
     display = GenericDisplay("Genetic Algorithm")
@@ -585,9 +585,7 @@ def _crack_substitution_genetic(ciphertext: str, model, t0: float) -> None:  # n
     )
 
 
-
 # Phase 2: Convergence analysis
-
 
 
 def cmd_analyse(args: argparse.Namespace) -> None:
@@ -601,7 +599,6 @@ def cmd_analyse(args: argparse.Namespace) -> None:
         sparkline_trajectory,
     )
     from cipher.display import print_result_box
-    from cipher.mcmc import MCMCConfig, run_mcmc
     from cipher.ngram import get_model
 
     console.print("[bold cyan]Running MCMC with convergence analysis…")
@@ -700,9 +697,7 @@ def cmd_analyse(args: argparse.Namespace) -> None:
     )
 
 
-
 # Phase 2: Cipher type detection
-
 
 
 def cmd_detect(args: argparse.Namespace) -> None:
@@ -751,9 +746,7 @@ def cmd_detect(args: argparse.Namespace) -> None:
     console.print(f"  Length: {f.length}")
 
 
-
 # Phase 2: Benchmark
-
 
 
 def cmd_benchmark(args: argparse.Namespace) -> None:
@@ -805,9 +798,7 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
         console.print(f"\n[green]Saved benchmark plot: {path}")
 
 
-
 # Phase 2: Phase transition
-
 
 
 def cmd_phase_transition(args: argparse.Namespace) -> None:
@@ -862,9 +853,7 @@ def cmd_phase_transition(args: argparse.Namespace) -> None:
         console.print(f"\n[green]Saved phase transition plot: {path}")
 
 
-
 # Phase 2: Adversarial stress tests
-
 
 
 def cmd_stress_test(_args: argparse.Namespace) -> None:
@@ -911,9 +900,7 @@ def cmd_stress_test(_args: argparse.Namespace) -> None:
     console.print(table)
 
 
-
 # Phase 2: Historical ciphers
-
 
 
 def cmd_historical(_args: argparse.Namespace) -> None:
@@ -944,9 +931,7 @@ def cmd_historical(_args: argparse.Namespace) -> None:
         console.print()
 
 
-
 # Phase 2: Multi-language support
-
 
 
 def cmd_language(args: argparse.Namespace) -> None:
@@ -974,9 +959,7 @@ def cmd_language(args: argparse.Namespace) -> None:
             console.print(f"  {lang}")
 
 
-
 # Argument parser
-
 
 
 def build_parser() -> argparse.ArgumentParser:

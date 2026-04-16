@@ -33,6 +33,7 @@ else:  # pragma: no cover - optional dependency
     def prange(*args, **kwargs):  # type: ignore[misc]
         return range(*args, **kwargs)
 
+
 if TYPE_CHECKING:
     pass
 
@@ -172,9 +173,7 @@ class NgramModel:
         self.log_penta: np.ndarray | None = None
         self._log_quad_flat: np.ndarray | None = None
 
-    
     # Training
-    
 
     def train(self, corpus: str) -> None:
         """Count n-gram frequencies and compute log-probability tables."""
@@ -359,9 +358,7 @@ class NgramModel:
             p5 /= p5.sum(axis=4, keepdims=True)
             self.log_penta = np.log(p5)
 
-    
     # Scoring
-    
 
     def score(self, text: str) -> float:
         """Return the total interpolated log-probability of *text*."""
@@ -497,9 +494,7 @@ class NgramModel:
         plain_idx = inv_map[ciphertext_idx]
         return self.score_quadgrams_fast(plain_idx)
 
-    
     # Persistence
-    
 
     def save(self, path: Path | None = None) -> None:
         path = path or MODEL_FILE

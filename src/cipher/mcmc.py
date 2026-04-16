@@ -17,9 +17,7 @@ import numpy as np
 from cipher.ngram import NgramModel, text_to_indices
 
 
-
 # Configuration
-
 
 
 @dataclass
@@ -84,9 +82,7 @@ class MCMCConfig:
     """Optional deterministic seed for repeatable solver runs."""
 
 
-
 # Result type
-
 
 
 @dataclass
@@ -104,16 +100,13 @@ class MCMCResult:
     swap_acceptance_rate: float = 0.0
 
 
-
 # Callback signature
 
 # callback(chain_idx, iteration, current_key, current_plaintext, current_score, best_score, temperature)
 ProgressCallback = Callable[[int, int, str, str, float, float, float], None]
 
 
-
 # Core solver
-
 
 
 def _apply_key(ciphertext: str, key: str) -> str:
@@ -272,9 +265,7 @@ def run_mcmc(
             break
 
         n_replicas = (
-            max(1, int(config.num_replicas))
-            if config.use_parallel_tempering
-            else 1
+            max(1, int(config.num_replicas)) if config.use_parallel_tempering else 1
         )
         temperatures = _temperature_ladder(config)[:n_replicas]
 
@@ -341,7 +332,9 @@ def run_mcmc(
                     )
 
                 proposal_inv = _build_inv_map(proposal_perm, include_space, A)
-                proposal_score = model.score_quadgrams_with_mapping(ct_idx, proposal_inv)
+                proposal_score = model.score_quadgrams_with_mapping(
+                    ct_idx, proposal_inv
+                )
 
                 delta = float(proposal_score - current_score)
                 accept = delta >= 0.0 or random.random() < math.exp(
@@ -439,7 +432,9 @@ def run_mcmc(
                 cold = replicas[cold_idx]
                 cold_perm = np.array(cold["perm"], copy=False)
                 cold_inv = np.array(cold["inv"], copy=False)
-                cold_pt = _idx_to_text(_decode_with_inv(ct_idx, cold_inv), include_space)
+                cold_pt = _idx_to_text(
+                    _decode_with_inv(ct_idx, cold_inv), include_space
+                )
                 cold_score = float(cold["score"])
 
                 if config.track_trajectory:

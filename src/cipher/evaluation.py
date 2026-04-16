@@ -21,9 +21,7 @@ from cipher.ciphers import SimpleSubstitution
 from cipher.ngram import NgramModel, text_to_indices
 
 
-
 # Symbol Error Rate
-
 
 
 def symbol_error_rate(plaintext: str, decrypted: str) -> float:
@@ -49,9 +47,7 @@ def key_accuracy(true_key: str, found_key: str) -> float:
     return correct / max(len(true_key), 1)
 
 
-
 # Phase Transition Analysis
-
 
 
 @dataclass
@@ -226,9 +222,7 @@ def plot_phase_transition(
     return save_path
 
 
-
 # Benchmarking Against Baselines
-
 
 
 @dataclass

@@ -43,9 +43,7 @@ class PlayfairResult:
 PlayfairCallback = Callable[[int, int, str, float, float], None]
 
 
-
 # Fast Playfair decrypt via lookup table
-
 
 
 def _build_decrypt_table(key: list[int]) -> np.ndarray:
@@ -109,9 +107,7 @@ def _idx_to_str(plain: np.ndarray) -> str:
     return "".join(PF_ALPHA[i] for i in plain)
 
 
-
 # Proposal moves
-
 
 
 def _propose(key: list[int]) -> tuple[str, tuple]:
@@ -188,9 +184,7 @@ def _undo(key: list[int], move_type: str, info: tuple) -> None:
             key[r * 5 + col] = vals[r]
 
 
-
 # Main cracker
-
 
 
 def crack_playfair(

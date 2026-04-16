@@ -23,9 +23,7 @@ class HistoricalCipher:
     difficulty: str = "unknown"
 
 
-
 # Curated historical / historically-inspired challenges
-
 
 
 def get_historical_ciphers() -> list[HistoricalCipher]:
@@ -159,9 +157,7 @@ def get_historical_ciphers() -> list[HistoricalCipher]:
     ]
 
 
-
 # Runner
-
 
 
 def run_historical_challenge(

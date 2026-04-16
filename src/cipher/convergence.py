@@ -18,9 +18,7 @@ import numpy as np
 from cipher.mcmc import MCMCResult
 
 
-
 # Score Trajectory
-
 
 
 def plot_score_trajectory(
@@ -134,9 +132,7 @@ def sparkline_trajectory(result: MCMCResult, width: int = 60) -> str:
     )
 
 
-
 # Multi-Chain Consensus
-
 
 
 def chain_consensus(result: MCMCResult) -> dict[str, object]:
@@ -188,9 +184,7 @@ def chain_consensus(result: MCMCResult) -> dict[str, object]:
     }
 
 
-
 # Posterior Distribution (Key Confidence Heatmap)
-
 
 
 def key_confidence_heatmap(
@@ -247,9 +241,7 @@ def key_confidence_heatmap(
     return save_path
 
 
-
 # Frequency Alignment Visualization
-
 
 
 ENGLISH_FREQ = np.array(

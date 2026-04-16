@@ -42,9 +42,7 @@ class StressTestResult:
     success: bool = False
 
 
-
 # Adversarial Text Generators
-
 
 
 def _legal_text() -> str:
@@ -129,9 +127,7 @@ def _adversarial_key() -> str:
     return "".join(key_list)
 
 
-
 # Test Case Generation
-
 
 
 def generate_stress_tests() -> list[StressTestCase]:
@@ -197,9 +193,7 @@ def generate_stress_tests() -> list[StressTestCase]:
     return cases
 
 
-
 # Runner
-
 
 
 def run_stress_tests(

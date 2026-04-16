@@ -160,9 +160,7 @@ def get_language_model(
     return model
 
 
-
 # Language Detection
-
 
 
 # Approximate letter frequency profiles for quick detection

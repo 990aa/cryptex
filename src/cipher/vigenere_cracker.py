@@ -19,9 +19,7 @@ import numpy as np
 from cipher.ngram import NgramModel
 
 
-
 # Config
-
 
 
 @dataclass
@@ -49,9 +47,7 @@ VigenereCallback = Callable[[str, str, float], None]
 ENGLISH_IOC = 0.0667
 
 
-
 # Index of Coincidence
-
 
 
 def _ioc(text: str) -> float:
@@ -86,9 +82,7 @@ def detect_key_length(ciphertext: str, max_len: int = 20, top_n: int = 3) -> lis
     return [kl for kl, _ in scores[:top_n]]
 
 
-
 # Kasiski Examination (supporting evidence)
-
 
 
 def _kasiski_distances(ciphertext: str, ngram_len: int = 3) -> list[int]:
@@ -119,7 +113,6 @@ def kasiski_key_lengths(ciphertext: str, max_len: int = 20) -> list[int]:
     if not factor_counts:
         return []
     return [kl for kl, _ in factor_counts.most_common(5)]
-
 
 
 # Frequency-based Caesar solver for a single subsequence
@@ -179,9 +172,7 @@ def _solve_caesar(subseq: str) -> int:
     return best_shift
 
 
-
 # Full Vigenère cracker
-
 
 
 def crack_vigenere(
