@@ -13,7 +13,7 @@ class TestKnownPlaintextCracking:
         from cryptex.solvers.kpa import crack_with_known_plaintext
         from cryptex.solvers.mcmc import MCMCConfig, run_mcmc
 
-        key = SimpleSubstitution.random_key()
+        key = "zyxwvutsrqponmlkjihgfedcba"
         ct = SimpleSubstitution.encrypt(sample_plaintext, key)
 
         pt_alpha = "".join(ch for ch in sample_plaintext.lower() if ch.isalpha())
