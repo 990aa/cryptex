@@ -308,7 +308,9 @@ def crack_playfair(
             )
 
             if accept:
-                low_band = ranked_idx[elite_count:] if elite_count < pop_size else ranked_idx
+                low_band = (
+                    ranked_idx[elite_count:] if elite_count < pop_size else ranked_idx
+                )
                 replace_idx = random.choice(low_band)
                 population[replace_idx] = child
 

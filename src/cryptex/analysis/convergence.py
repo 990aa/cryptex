@@ -73,7 +73,9 @@ def plot_score_trajectory(
     payload: dict[str, object] = {
         "iterations": [int(i) for i in iters],
         "scores": [float(s) for s in scores],
-        "reference_score": (float(reference_score) if reference_score is not None else None),
+        "reference_score": (
+            float(reference_score) if reference_score is not None else None
+        ),
         "acceptance_rates": [float(r) for r in result.acceptance_rates],
         "chain_boundaries": chain_boundaries,
         "summary": {

@@ -220,10 +220,12 @@ def _apply_vigenere_key(ciphertext: str, shifts: list[int]) -> str:
             out.append(ch)
     return "".join(out)
 
+
 def _score_shifts(ciphertext: str, shifts: list[int], model: NgramModel) -> float:
     plaintext = _apply_vigenere_key(ciphertext, shifts)
     pt_idx = text_to_indices(plaintext, include_space=model.include_space)
     return model.score_adaptive(pt_idx)
+
 
 def _coordinate_refine_shifts(
     ciphertext: str,
@@ -333,7 +335,10 @@ def crack_vigenere(
     rank = 0
     for kl in candidate_lengths:
         rank += 1
-        shifts = [_solve_caesar_ngram(_get_subseq(letters, kl, pos), model) for pos in range(kl)]
+        shifts = [
+            _solve_caesar_ngram(_get_subseq(letters, kl, pos), model)
+            for pos in range(kl)
+        ]
         shifts = _coordinate_refine_shifts(letters, shifts, model, rounds=1)
 
         candidates = [shifts]
