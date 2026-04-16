@@ -20,6 +20,7 @@ from cryptex.ngram import NgramModel
 # Alphabet used by Playfair (no j)
 PF_ALPHA = "abcdefghiklmnopqrstuvwxyz"  # 25 chars
 PF_CH2I = {ch: i for i, ch in enumerate(PF_ALPHA)}
+PF_TO_ALPHA_IDX = np.asarray([ord(ch) - ord("a") for ch in PF_ALPHA], dtype=np.int8)
 
 
 @dataclass
@@ -84,7 +85,7 @@ def _build_decrypt_table(key: list[int]) -> np.ndarray:
 def _fast_decrypt_score(
     ct_pairs: np.ndarray,
     table: np.ndarray,
-    log_quad: np.ndarray,
+    model: NgramModel,
 ) -> tuple[float, np.ndarray]:
     """Decrypt and score using precomputed table."""
     N = len(ct_pairs)
@@ -96,10 +97,11 @@ def _fast_decrypt_score(
     plain[0::2] = pi.astype(np.int8)
     plain[1::2] = pj.astype(np.int8)
 
-    n = len(plain)
-    if n < 4:
-        return 0.0, plain
-    score = float(log_quad[plain[:-3], plain[1:-2], plain[2:-1], plain[3:]].sum())
+    # Map Playfair's 25-letter alphabet (i/j merged) into model alpha indices.
+    alpha_idx = PF_TO_ALPHA_IDX[plain]
+    score = model.score_digraphs(alpha_idx)
+    if len(alpha_idx) >= 12:
+        score = 0.7 * score + 0.3 * model.score_adaptive(alpha_idx)
     return score, plain
 
 
@@ -211,16 +213,13 @@ def crack_playfair(
         dtype=np.int8,
     )
 
-    log_quad = model.log_quad
-    assert log_quad is not None
-
     for chain_idx in range(config.num_restarts):
         perm = list(range(25))
         random.shuffle(perm)
         key = perm
 
         table = _build_decrypt_table(key)
-        score, plain = _fast_decrypt_score(ct_pairs, table, log_quad)
+        score, plain = _fast_decrypt_score(ct_pairs, table, model)
 
         best_chain_score = score
         temperature = config.t_start
@@ -228,7 +227,7 @@ def crack_playfair(
         for it in range(1, config.iterations + 1):
             move_type, undo_info = _propose(key)
             new_table = _build_decrypt_table(key)
-            new_score, new_plain = _fast_decrypt_score(ct_pairs, new_table, log_quad)
+            new_score, new_plain = _fast_decrypt_score(ct_pairs, new_table, model)
 
             delta = new_score - score
             if delta > 0 or random.random() < math.exp(delta / max(temperature, 1e-12)):
