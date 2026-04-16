@@ -9,16 +9,19 @@ from __future__ import annotations
 
 import pickle
 import unicodedata
+import importlib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
 
-try:
-    from numba import njit, prange
-
+_numba_spec = importlib.util.find_spec("numba")
+if _numba_spec is not None:
+    numba = importlib.import_module("numba")
+    njit = numba.njit
+    prange = numba.prange
     NUMBA_AVAILABLE = True
-except Exception:  # pragma: no cover - optional dependency
+else:  # pragma: no cover - optional dependency
     NUMBA_AVAILABLE = False
 
     def njit(*_args, **_kwargs):  # type: ignore[misc]

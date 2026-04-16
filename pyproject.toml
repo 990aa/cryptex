@@ -9,6 +9,7 @@ dependencies = [
     "rich",
     "requests",
     "matplotlib",
+    "numba>=0.65.0",
 ]
 
 [build-system]
