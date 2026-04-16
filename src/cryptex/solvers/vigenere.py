@@ -220,6 +220,46 @@ def _apply_vigenere_key(ciphertext: str, shifts: list[int]) -> str:
             out.append(ch)
     return "".join(out)
 
+def _score_shifts(ciphertext: str, shifts: list[int], model: NgramModel) -> float:
+    plaintext = _apply_vigenere_key(ciphertext, shifts)
+    pt_idx = text_to_indices(plaintext, include_space=model.include_space)
+    return model.score_adaptive(pt_idx)
+
+def _coordinate_refine_shifts(
+    ciphertext: str,
+    shifts: list[int],
+    model: NgramModel,
+    rounds: int = 1,
+) -> list[int]:
+    """Greedy coordinate descent over key shifts for stronger final keys."""
+    best = list(shifts)
+    best_score = _score_shifts(ciphertext, best, model)
+    if not best:
+        return best
+
+    for _ in range(max(rounds, 1)):
+        improved = False
+        for pos in range(len(best)):
+            orig = best[pos]
+            local_best = orig
+            local_score = best_score
+            for candidate in range(26):
+                if candidate == orig:
+                    continue
+                trial = list(best)
+                trial[pos] = candidate
+                score = _score_shifts(ciphertext, trial, model)
+                if score > local_score:
+                    local_score = score
+                    local_best = candidate
+            if local_best != orig:
+                best[pos] = local_best
+                best_score = local_score
+                improved = True
+        if not improved:
+            break
+    return best
+
 
 def _refine_to_word_key(shifts: list[int], word_list: list[str]) -> list[int]:
     """Snap shift sequence to a nearby dictionary word key when plausible."""
@@ -295,15 +335,39 @@ def crack_vigenere(
         plaintext = _apply_vigenere_key(ciphertext, shifts)
         pt_idx = text_to_indices(plaintext, include_space=model.include_space)
         score = model.score_adaptive(pt_idx)
-        key = "".join(chr(ord("a") + s) for s in shifts)
+    top_n = min(max(config.top_key_lengths, 1), len(length_scores))
+    preferred = {kl for kl, _ in length_scores[:top_n]}
+    preferred.update(detect_key_length(letters, max_len=max_len, top_n=min(6, max_len)))
+    preferred.update(kasiski_key_lengths(letters, max_len=max_len))
+    candidate_lengths = sorted(preferred) if preferred else [1]
+
+    rank = 0
+    for kl in candidate_lengths:
+        rank += 1
+        shifts = [_solve_caesar_ngram(_get_subseq(letters, kl, pos), model) for pos in range(kl)]
+        shifts = _coordinate_refine_shifts(letters, shifts, model, rounds=1)
+
+        candidates = [shifts]
+        word_refined = _refine_to_word_key(shifts, COMMON_KEY_WORDS)
+        if word_refined != shifts:
+            candidates.append(word_refined)
+
+        best_local_shifts = shifts
+        best_local_score = -math.inf
+        for candidate_shifts in candidates:
+            score = _score_shifts(ciphertext, candidate_shifts, model)
+            if score > best_local_score:
+                best_local_score = score
+                best_local_shifts = candidate_shifts
+
+        plaintext = _apply_vigenere_key(ciphertext, best_local_shifts)
+        key = "".join(chr(ord("a") + s) for s in best_local_shifts)
 
         if callback and rank % max(config.callback_interval, 1) == 0:
-            callback(key, plaintext[:120], score)
+            callback(key, plaintext[:120], best_local_score)
 
-        if score > result.best_score:
-            result.best_score = score
+        if best_local_score > result.best_score:
+            result.best_score = best_local_score
             result.best_key = key
             result.best_plaintext = plaintext
             result.detected_key_length = kl
-
-    return result
