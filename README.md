@@ -181,22 +181,6 @@ uv run cryptex language detect --text "bonjour le monde"
 
 Supported languages: english, french, german, spanish.
 
-## Development Quality Gates
-
-Run the same checks used during cleanup in this iteration:
-
-```bash
-uvx ruff check --fix
-uvx ruff format
-uvx ty check
-uv run pytest -q
-```
-
-Current verified state in this workspace:
-- Ruff: clean
-- Ty: clean
-- Pytest: 261 passed
-
 ## Known Limits and Failure Modes
 
 - Very short ciphertext (< ~30 chars) can decrypt poorly.

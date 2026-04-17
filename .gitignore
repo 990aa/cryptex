@@ -12,3 +12,7 @@ logs/
 *.txt
 .ruff_cache/
 .pytest_cache/
+.hypothesis/
+.ipynb_checkpoints/
+.DS_Store
+.vscode/
