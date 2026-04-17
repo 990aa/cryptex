@@ -1,7 +1,7 @@
 [project]
 name = "cryptex"
 version = "0.5.0"
-description = "Research-grade classical cryptanalysis: adaptive MCMC, parallel tempering, KP attacks, multilingual 5-gram models, and exhaustive cipher coverage"
+description = "Cryptanalysis: adaptive MCMC, parallel tempering, KP attacks, multilingual 5-gram models, and exhaustive cipher coverage"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [

@@ -1,4 +1,4 @@
-# cryptex
+# Cryptex
 
 High-performance classical cryptanalysis toolkit for educational and research use.
 
