@@ -1,0 +1,402 @@
+{
+  "metadata": {
+    "generated_utc": "2026-04-17T05:32:40Z",
+    "custom_text_count": 10,
+    "language_sample_count": 10,
+    "available_languages": [
+      "english",
+      "french",
+      "german",
+      "spanish"
+    ],
+    "total_solver_runs": 130
+  },
+  "references": {
+    "benchmark_json": {
+      "success_threshold": 0.2,
+      "entries": [
+        {
+          "method": "MCMC",
+          "avg_ser": 0.0,
+          "avg_score": -417.5816188312587,
+          "avg_time": 10.45238455136617,
+          "success_rate": 1.0,
+          "trials": 3
+        },
+        {
+          "method": "Genetic Algorithm",
+          "avg_ser": 0.0,
+          "avg_score": -417.5816188312587,
+          "avg_time": 8.510555505752563,
+          "success_rate": 1.0,
+          "trials": 3
+        },
+        {
+          "method": "Frequency Analysis",
+          "avg_ser": 0.6231205405808292,
+          "avg_score": -1605.9929611998098,
+          "avg_time": 0.00018056233723958334,
+          "success_rate": 0.0,
+          "trials": 3
+        },
+        {
+          "method": "Hill Climb + Freq Init",
+          "avg_ser": 0.2827868852459016,
+          "avg_score": -754.7247068276669,
+          "avg_time": 0.15137259165445963,
+          "success_rate": 0.6666666666666666,
+          "trials": 3
+        }
+      ]
+    },
+    "phase_transition_json": {
+      "lengths": [
+        50,
+        75,
+        100,
+        125,
+        150,
+        200,
+        300,
+        500
+      ],
+      "success_rates": [
+        0.3333333333333333,
+        0.6666666666666666,
+        0.3333333333333333,
+        1.0,
+        0.6666666666666666,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "avg_ser": [
+        0.5164835164835165,
+        0.2568306010928962,
+        0.25345528455284555,
+        0.0,
+        0.19827586206896552,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "avg_times": [
+        8.999910831451416,
+        8.15307060877482,
+        8.119412581125895,
+        9.284680128097534,
+        8.90660047531128,
+        8.925459305445353,
+        9.214521328608194,
+        10.79717206954956
+      ],
+      "threshold_length": 75
+    }
+  },
+  "custom_suite": {
+    "method_summaries": {
+      "Affine": {
+        "runs": 10,
+        "successes": 10,
+        "failures": 0,
+        "threshold": 0.2,
+        "avg_ser": 0.0,
+        "median_ser": 0.0,
+        "avg_time_seconds": 0.3112138600015896
+      },
+      "Frequency Analysis": {
+        "runs": 10,
+        "successes": 1,
+        "failures": 0,
+        "threshold": 0.6,
+        "avg_ser": 0.8279135901918805,
+        "median_ser": 0.8254311926605504,
+        "avg_time_seconds": 0.0014256499998737127
+      },
+      "Genetic Algorithm": {
+        "runs": 10,
+        "successes": 0,
+        "failures": 0,
+        "threshold": 0.3,
+        "avg_ser": 0.8827683395194489,
+        "median_ser": 0.931963963963964,
+        "avg_time_seconds": 0.6824065200009499
+      },
+      "HMM/EM": {
+        "runs": 10,
+        "successes": 0,
+        "failures": 0,
+        "threshold": 0.4,
+        "avg_ser": 0.9512740221454257,
+        "median_ser": 0.9488944513975803,
+        "avg_time_seconds": 37.45446109999612
+      },
+      "Hill Climb + Freq Init": {
+        "runs": 10,
+        "successes": 0,
+        "failures": 0,
+        "threshold": 0.35,
+        "avg_ser": 0.7617792621403081,
+        "median_ser": 0.8060347418404761,
+        "avg_time_seconds": 0.13943052999966313
+      },
+      "KPA-Constrained MCMC": {
+        "runs": 10,
+        "successes": 7,
+        "failures": 0,
+        "threshold": 0.2,
+        "avg_ser": 0.16744097426635063,
+        "median_ser": 0.12564591535433073,
+        "avg_time_seconds": 0.5820452000029036
+      },
+      "MCMC": {
+        "runs": 10,
+        "successes": 0,
+        "failures": 0,
+        "threshold": 0.2,
+        "avg_ser": 0.862739459083804,
+        "median_ser": 0.8806573091407053,
+        "avg_time_seconds": 0.9449117999989539
+      },
+      "Noisy HMM": {
+        "runs": 10,
+        "successes": 0,
+        "failures": 0,
+        "threshold": 0.6,
+        "avg_ser": 0.9320973565063635,
+        "median_ser": 0.9311356965454956,
+        "avg_time_seconds": 38.41879371999821
+      },
+      "Noisy MCMC": {
+        "runs": 10,
+        "successes": 0,
+        "failures": 0,
+        "threshold": 0.5,
+        "avg_ser": 0.8889457882910214,
+        "median_ser": 0.8986189579409918,
+        "avg_time_seconds": 0.3979884400017909
+      },
+      "Playfair": {
+        "runs": 10,
+        "successes": 0,
+        "failures": 0,
+        "threshold": 0.7,
+        "avg_ser": 0.9350332272766846,
+        "median_ser": 0.9415652173913043,
+        "avg_time_seconds": 6.962579449999612
+      },
+      "Rail Fence": {
+        "runs": 10,
+        "successes": 10,
+        "failures": 0,
+        "threshold": 0.35,
+        "avg_ser": 0.0,
+        "median_ser": 0.0,
+        "avg_time_seconds": 0.13277006999851437
+      },
+      "Transposition": {
+        "runs": 10,
+        "successes": 10,
+        "failures": 0,
+        "threshold": 0.25,
+        "avg_ser": 0.0,
+        "median_ser": 0.0,
+        "avg_time_seconds": 1.020912889999454
+      },
+      "Vigenere": {
+        "runs": 10,
+        "successes": 3,
+        "failures": 0,
+        "threshold": 0.3,
+        "avg_ser": 0.4180695130522164,
+        "median_ser": 0.33600615818846624,
+        "avg_time_seconds": 2.2017503100025353
+      }
+    },
+    "method_ranking_by_avg_ser": [
+      {
+        "method": "Affine",
+        "avg_ser": 0.0,
+        "successes": 10,
+        "runs": 10,
+        "avg_time_seconds": 0.3112138600015896
+      },
+      {
+        "method": "Rail Fence",
+        "avg_ser": 0.0,
+        "successes": 10,
+        "runs": 10,
+        "avg_time_seconds": 0.13277006999851437
+      },
+      {
+        "method": "Transposition",
+        "avg_ser": 0.0,
+        "successes": 10,
+        "runs": 10,
+        "avg_time_seconds": 1.020912889999454
+      },
+      {
+        "method": "KPA-Constrained MCMC",
+        "avg_ser": 0.16744097426635063,
+        "successes": 7,
+        "runs": 10,
+        "avg_time_seconds": 0.5820452000029036
+      },
+      {
+        "method": "Vigenere",
+        "avg_ser": 0.4180695130522164,
+        "successes": 3,
+        "runs": 10,
+        "avg_time_seconds": 2.2017503100025353
+      },
+      {
+        "method": "Hill Climb + Freq Init",
+        "avg_ser": 0.7617792621403081,
+        "successes": 0,
+        "runs": 10,
+        "avg_time_seconds": 0.13943052999966313
+      },
+      {
+        "method": "Frequency Analysis",
+        "avg_ser": 0.8279135901918805,
+        "successes": 1,
+        "runs": 10,
+        "avg_time_seconds": 0.0014256499998737127
+      },
+      {
+        "method": "MCMC",
+        "avg_ser": 0.862739459083804,
+        "successes": 0,
+        "runs": 10,
+        "avg_time_seconds": 0.9449117999989539
+      },
+      {
+        "method": "Genetic Algorithm",
+        "avg_ser": 0.8827683395194489,
+        "successes": 0,
+        "runs": 10,
+        "avg_time_seconds": 0.6824065200009499
+      },
+      {
+        "method": "Noisy MCMC",
+        "avg_ser": 0.8889457882910214,
+        "successes": 0,
+        "runs": 10,
+        "avg_time_seconds": 0.3979884400017909
+      },
+      {
+        "method": "Noisy HMM",
+        "avg_ser": 0.9320973565063635,
+        "successes": 0,
+        "runs": 10,
+        "avg_time_seconds": 38.41879371999821
+      },
+      {
+        "method": "Playfair",
+        "avg_ser": 0.9350332272766846,
+        "successes": 0,
+        "runs": 10,
+        "avg_time_seconds": 6.962579449999612
+      },
+      {
+        "method": "HMM/EM",
+        "avg_ser": 0.9512740221454257,
+        "successes": 0,
+        "runs": 10,
+        "avg_time_seconds": 37.45446109999612
+      }
+    ],
+    "roundtrip_checks": {
+      "substitution": {
+        "passed": 10,
+        "total": 10
+      },
+      "vigenere": {
+        "passed": 10,
+        "total": 10
+      },
+      "transposition": {
+        "passed": 10,
+        "total": 10
+      },
+      "affine": {
+        "passed": 10,
+        "total": 10
+      },
+      "railfence": {
+        "passed": 10,
+        "total": 10
+      },
+      "playfair": {
+        "passed": 10,
+        "total": 10
+      },
+      "noisy-substitution": {
+        "passed": 10,
+        "total": 10
+      }
+    },
+    "detector_accuracy": {
+      "correct": 39,
+      "total": 60,
+      "accuracy": 0.65
+    },
+    "language_detection": {
+      "correct": 9,
+      "total": 10,
+      "accuracy": 0.9,
+      "details": [
+        {
+          "expected": "english",
+          "predicted": "english",
+          "top_score": 0.2887854624651696
+        },
+        {
+          "expected": "english",
+          "predicted": "french",
+          "top_score": 0.23334604413036272
+        },
+        {
+          "expected": "french",
+          "predicted": "french",
+          "top_score": 0.20023427233848032
+        },
+        {
+          "expected": "french",
+          "predicted": "french",
+          "top_score": 0.2317557772691934
+        },
+        {
+          "expected": "german",
+          "predicted": "german",
+          "top_score": 0.32519151332839397
+        },
+        {
+          "expected": "german",
+          "predicted": "german",
+          "top_score": 0.4057748610358521
+        },
+        {
+          "expected": "spanish",
+          "predicted": "spanish",
+          "top_score": 0.12720033319688634
+        },
+        {
+          "expected": "spanish",
+          "predicted": "spanish",
+          "top_score": 0.352133300400661
+        },
+        {
+          "expected": "english",
+          "predicted": "english",
+          "top_score": 0.3028375226995139
+        },
+        {
+          "expected": "french",
+          "predicted": "french",
+          "top_score": 0.40799741940907613
+        }
+      ]
+    }
+  }
+}

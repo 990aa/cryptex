@@ -210,6 +210,25 @@ Primary output:
 
 Detailed benchmark discussion and measured results are maintained in `BENCHMARKS.md`.
 
+### Measured Snapshot
+
+From `plots/benchmark.json` (built-in substitution benchmark):
+
+| Method | Avg SER | Success Rate | Avg Time (s) |
+| --- | ---: | ---: | ---: |
+| MCMC | 0.0000 | 1.0000 | 10.4524 |
+| Genetic Algorithm | 0.0000 | 1.0000 | 8.5106 |
+| Frequency Analysis | 0.6231 | 0.0000 | 0.0002 |
+| Hill Climb + Freq Init | 0.2828 | 0.6667 | 0.1514 |
+
+From `plots/custom_benchmark_suite.json` (10 custom texts, all implemented algorithms):
+- Total solver runs: 130
+- Roundtrip encode/decode checks: 10/10 pass for substitution, vigenere, transposition, playfair, affine, rail fence, and noisy-substitution (best-effort decode path)
+- Cipher detector accuracy: 39/60 (65.0%)
+- Language detection accuracy: 9/10 (90.0%)
+
+See `BENCHMARKS.md` for the full per-algorithm ranking and interpretation.
+
 ## Development Quality Gates
 
 ```bash
